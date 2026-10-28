@@ -170,29 +170,62 @@ class Game {
     this.switchView('workshop');
   }
 
+  normalizeCarModelData(carObj, modelId) {
+    const cat = CAR_CATALOG.find(c => c.id === modelId) || CAR_CATALOG[0];
+    const resolvedId = cat.id;
+    const isRanger = resolvedId === 'car_ford_ranger_2004';
+    const expectedBody = isRanger ? 'body_ford_ranger_2004' : 'body_porsche_911_turbo_s';
+    const defaultChassis = isRanger ? 'chassis_pickup_ladder' : 'chassis_tube';
+
+    const baseParts = {
+      ...DEFAULT_CAR.parts,
+      ...(cat.defaultParts || {}),
+      ...(carObj?.parts || {})
+    };
+
+    baseParts.model = resolvedId;
+    if (baseParts.body !== 'body_none') {
+      baseParts.body = expectedBody;
+    }
+    if (!baseParts.chassis || (isRanger && baseParts.chassis === 'chassis_tube') || (!isRanger && baseParts.chassis === 'chassis_pickup_ladder')) {
+      baseParts.chassis = defaultChassis;
+    }
+
+    return {
+      ...DEFAULT_CAR,
+      ...(carObj || {}),
+      model: resolvedId,
+      bodyType: resolvedId,
+      name: cat.name,
+      parts: baseParts,
+      tuning: { ...DEFAULT_CAR.tuning, ...(carObj?.tuning || {}) }
+    };
+  }
+
   selectCar(modelId) {
     if (this.playerCar && this.playerCar.model) {
-      this.savedCars[this.playerCar.model] = JSON.parse(JSON.stringify(this.playerCar));
+      this.savedCars[this.playerCar.model] = this.normalizeCarModelData(this.playerCar, this.playerCar.model);
     }
 
-    if (this.savedCars[modelId]) {
-      this.playerCar = JSON.parse(JSON.stringify(this.savedCars[modelId]));
+    const cat = CAR_CATALOG.find(c => c.id === modelId) || CAR_CATALOG[0];
+    if (this.savedCars[cat.id]) {
+      this.playerCar = this.normalizeCarModelData(this.savedCars[cat.id], cat.id);
     } else {
-      const cat = CAR_CATALOG.find(c => c.id === modelId) || CAR_CATALOG[0];
-      this.playerCar = {
-        ...DEFAULT_CAR,
-        model: cat.id,
-        bodyType: cat.id,
-        name: cat.name,
-        parts: { ...DEFAULT_CAR.parts, ...(cat.defaultParts || {}) },
-        tuning: { ...DEFAULT_CAR.tuning }
-      };
-      this.savedCars[modelId] = JSON.parse(JSON.stringify(this.playerCar));
+      this.playerCar = this.normalizeCarModelData(null, cat.id);
     }
+    this.savedCars[cat.id] = JSON.parse(JSON.stringify(this.playerCar));
 
     if (this.garageUI) {
+      const idx = CAR_CATALOG.findIndex(c => c.id === cat.id);
+      if (idx !== -1) this.garageUI.currentCatalogIndex = idx;
       this.garageUI.updateStatsHUD();
       this.garageUI.updateRosterDisplay();
+    } else if (typeof CarSystem !== 'undefined') {
+      this.playerCarStats = CarSystem.calculateStats(this.playerCar);
+    }
+
+    if (this.multiplayer) {
+      this.multiplayer.sendUpdateCar();
     }
     this.saveData();
   }
@@ -431,7 +464,11 @@ class Game {
         this.multiplayer.send({
           type: 'CREATE_ROOM',
           roomName: roomName,
-          wager: wager
+          wager: wager,
+          carName: this.playerCar.name,
+          carModel: this.playerCar.model,
+          carData: this.playerCar,
+          hp: this.playerCarStats?.hp || 650
         });
       });
     }
@@ -638,7 +675,7 @@ class Game {
           this.savedCars = {};
           for (const [k, v] of Object.entries(data.savedCars)) {
             if (validCatalogIds.includes(k)) {
-              this.savedCars[k] = v;
+              this.savedCars[k] = this.normalizeCarModelData(v, k);
             }
           }
         }
@@ -651,26 +688,11 @@ class Game {
           const resolvedModel = validCatalogIds.includes(data.car.model)
             ? data.car.model
             : 'car_porsche_911_turbo_s';
-          const defaultBodyForModel = resolvedModel === 'car_ford_ranger_2004'
-            ? 'body_ford_ranger_2004'
-            : 'body_porsche_911_turbo_s';
-          const resolvedBody = (data.car.parts.body === 'body_none')
-            ? 'body_none'
-            : defaultBodyForModel;
-          this.playerCar = {
-            ...DEFAULT_CAR,
-            ...data.car,
-            name: CAR_CATALOG.find(c => c.id === resolvedModel)?.name || DEFAULT_CAR.name,
-            model: resolvedModel,
-            bodyType: resolvedModel,
-            parts: {
-              ...DEFAULT_CAR.parts,
-              ...(data.car.parts || {}),
-              model: resolvedModel,
-              body: resolvedBody
-            },
-            tuning: loadedTuning
-          };
+          this.playerCar = this.normalizeCarModelData(
+            { ...data.car, tuning: loadedTuning },
+            resolvedModel
+          );
+          this.savedCars[resolvedModel] = JSON.parse(JSON.stringify(this.playerCar));
         }
       }
     } catch (e) {

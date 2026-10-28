@@ -169,12 +169,20 @@ class GarageUI {
       });
     }
 
+    const ensureActiveCarSynced = () => {
+      const catCar = CAR_CATALOG[this.currentCatalogIndex] || CAR_CATALOG[0];
+      const isOwned = this.game.ownedCarModels && this.game.ownedCarModels.includes(catCar.id);
+      if (isOwned && this.game.playerCar.model !== catCar.id) {
+        this.game.selectCar(catCar.id);
+      }
+      return { catCar, isOwned };
+    };
+
     // Bottom Toolbar Buttons
     const btnWorkshop = document.getElementById('btnOpenWorkshop');
     if (btnWorkshop) {
       btnWorkshop.addEventListener('click', () => {
-        const catCar = CAR_CATALOG[this.currentCatalogIndex] || CAR_CATALOG[0];
-        const isOwned = this.game.ownedCarModels && this.game.ownedCarModels.includes(catCar.id);
+        const { catCar, isOwned } = ensureActiveCarSynced();
         if (!isOwned) {
           if (typeof window.showGamePopup === 'function') {
             window.showGamePopup({
@@ -188,11 +196,6 @@ class GarageUI {
           return;
         }
 
-        // If owned but not currently equipped, select it first
-        if (this.game.playerCar.model !== catCar.id) {
-          this.game.selectCar(catCar.id);
-        }
-
         this.game.showWorkshop();
         audio.playClick();
       });
@@ -201,6 +204,7 @@ class GarageUI {
     const btnRaceBots = document.getElementById('btnGarageRaceBots');
     if (btnRaceBots) {
       btnRaceBots.addEventListener('click', () => {
+        ensureActiveCarSynced();
         const modal = document.getElementById('botsModal');
         if (modal) {
           this.game.renderBotsList();
@@ -213,6 +217,7 @@ class GarageUI {
     const btnRaceMulti = document.getElementById('btnGarageRaceMultiplayer');
     if (btnRaceMulti) {
       btnRaceMulti.addEventListener('click', () => {
+        ensureActiveCarSynced();
         const modal = document.getElementById('multiplayerModal');
         if (modal) {
           modal.style.display = 'flex';
@@ -224,6 +229,7 @@ class GarageUI {
     const btnRaceFarm = document.getElementById('btnGarageRaceFarm');
     if (btnRaceFarm) {
       btnRaceFarm.addEventListener('click', () => {
+        ensureActiveCarSynced();
         const activeDist = (typeof RACE_DISTANCES !== 'undefined')
           ? (RACE_DISTANCES.find(d => d.id === this.game.selectedDistanceId) || RACE_DISTANCES[0])
           : null;
@@ -308,13 +314,23 @@ class GarageUI {
   // --- CAR ROSTER CAROUSEL NAVIGATION ---
   prevCar() {
     this.currentCatalogIndex = (this.currentCatalogIndex - 1 + CAR_CATALOG.length) % CAR_CATALOG.length;
-    this.updateRosterDisplay();
+    const catCar = CAR_CATALOG[this.currentCatalogIndex];
+    if (catCar && this.game.ownedCarModels.includes(catCar.id)) {
+      this.game.selectCar(catCar.id);
+    } else {
+      this.updateRosterDisplay();
+    }
     audio.playClick();
   }
 
   nextCar() {
     this.currentCatalogIndex = (this.currentCatalogIndex + 1) % CAR_CATALOG.length;
-    this.updateRosterDisplay();
+    const catCar = CAR_CATALOG[this.currentCatalogIndex];
+    if (catCar && this.game.ownedCarModels.includes(catCar.id)) {
+      this.game.selectCar(catCar.id);
+    } else {
+      this.updateRosterDisplay();
+    }
     audio.playClick();
   }
 

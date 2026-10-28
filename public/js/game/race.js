@@ -288,7 +288,17 @@ class RaceManager {
     const buildBotCarData = (bConf) => {
       const bData = JSON.parse(JSON.stringify(DEFAULT_CAR));
       bData.name = bConf.carName || bConf.name;
-      if (bConf.bodyType) bData.parts.body = bConf.bodyType;
+      if (bConf.bodyType === 'body_ford_ranger_2004') {
+        bData.model = 'car_ford_ranger_2004';
+        bData.bodyType = 'car_ford_ranger_2004';
+        bData.parts.model = 'car_ford_ranger_2004';
+        bData.parts.body = 'body_ford_ranger_2004';
+      } else if (bConf.bodyType) {
+        bData.model = 'car_porsche_911_turbo_s';
+        bData.bodyType = 'car_porsche_911_turbo_s';
+        bData.parts.model = 'car_porsche_911_turbo_s';
+        bData.parts.body = bConf.bodyType;
+      }
       if (bConf.engineType) bData.parts.engine_block = bConf.engineType;
       const hp = bConf.stats?.hp || 200;
       if (hp >= 1500) {
@@ -383,8 +393,10 @@ class RaceManager {
 
     audio.startEngineSound(this.playerCar.stats.idleRpm, this.playerCar.carData);
 
-    // Start Christmas tree countdown sequence
-    this.runTreeSequence();
+    // Start Christmas tree countdown sequence (in live WS multiplayer, server drives COUNTDOWN_STAGE)
+    if (this.mode !== 'multiplayer' || !this.game.multiplayer?.isConnected || this.game.multiplayer?.isStaticFallback) {
+      this.runTreeSequence();
+    }
 
     // Start main race render loop
     let lastTime = performance.now();

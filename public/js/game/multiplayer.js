@@ -75,12 +75,14 @@ class MultiplayerManager {
         this.isStaticFallback = false;
         this.failedAttempts = 0;
         this.updateStatusBadge(true);
-        // Login with player profile
+        // Login with player profile & active car model
         this.send({
           type: 'LOGIN',
           name: this.game.playerName,
           carName: this.game.playerCar.name,
-          hp: this.game.playerCarStats?.hp || 200,
+          carModel: this.game.playerCar.model,
+          carData: this.game.playerCar,
+          hp: this.game.playerCarStats?.hp || 650,
           money: this.game.money
         });
       };
@@ -252,6 +254,17 @@ class MultiplayerManager {
     }
   }
 
+  sendUpdateCar() {
+    if (!this.game.playerCar) return;
+    this.send({
+      type: 'UPDATE_CAR',
+      carName: this.game.playerCar.name,
+      carModel: this.game.playerCar.model,
+      carData: this.game.playerCar,
+      hp: this.game.playerCarStats?.hp || 650
+    });
+  }
+
   handleMessage(msg) {
     switch (msg.type) {
       case 'LOGIN_OK': {
@@ -278,6 +291,24 @@ class MultiplayerManager {
         break;
       }
 
+      case 'PLAYER_READY_STATUS': {
+        if (msg.room) {
+          this.currentRoom = msg.room;
+          this.renderRoomModal(msg.room);
+        }
+        break;
+      }
+
+      case 'RACE_START': {
+        if (msg.room) {
+          this.currentRoom = msg.room;
+        }
+        if (this.currentRoom && !this.game.raceManager.isActive) {
+          this.startMultiplayerRace(this.currentRoom);
+        }
+        break;
+      }
+
       case 'LEFT_ROOM': {
         this.currentRoom = null;
         document.getElementById('multiplayerRoomModal').style.display = 'none';
@@ -290,6 +321,7 @@ class MultiplayerManager {
           this.game.raceManager.treeState = msg.stage;
           if (msg.stage === 'GREEN') {
             this.game.raceManager.isGreen = true;
+            this.game.raceManager.greenTimestamp = performance.now();
             audio.playTreeBeep(true);
           } else {
             audio.playTreeBeep(false);
@@ -299,7 +331,7 @@ class MultiplayerManager {
       }
 
       case 'OPPONENT_SYNC': {
-        // Sync opponent physics
+        // Sync opponent physics & finish telemetry
         if (this.game.raceManager.opponentCar) {
           const opp = this.game.raceManager.opponentCar;
           opp.distance = msg.distance;
@@ -308,6 +340,12 @@ class MultiplayerManager {
           opp.gear = msg.gear;
           opp.nosActive = msg.nos;
           opp.wheelie = msg.wheelie || 0;
+          if (msg.isFinished !== undefined) opp.isFinished = msg.isFinished;
+          if (msg.timeQuarterMile) opp.timeQuarterMile = msg.timeQuarterMile;
+          if (msg.time60ft) opp.time60ft = msg.time60ft;
+          if (msg.time330ft) opp.time330ft = msg.time330ft;
+          if (msg.time660ft) opp.time660ft = msg.time660ft;
+          if (msg.finishTrapSpeed) opp.finishTrapSpeed = msg.finishTrapSpeed;
           if (msg.blown && !opp.isBlown) {
             opp.blowEngine('เครื่องยนต์คู่แข่งระเบิด!');
           }
@@ -353,7 +391,7 @@ class MultiplayerManager {
             </div>
             <div class="room-status">
               <span class="badge ${r.status === 'waiting' ? 'badge-waiting' : 'badge-racing'}">
-                ${r.status === 'waiting' ? 'รอคู่แข่ง (1/2)' : 'กำลังแข่ง'}
+                ${r.status === 'waiting' ? `รอคู่แข่ง (${r.playerCount || 1}/2)` : 'กำลังแข่ง'}
               </span>
               ${r.status === 'waiting' && r.playerCount < 2 ? `
                 <button class="btn btn-join-room" data-room="${r.id}">เข้าร่วมแข่ง</button>
@@ -365,7 +403,14 @@ class MultiplayerManager {
         roomsList.querySelectorAll('.btn-join-room').forEach(btn => {
           btn.addEventListener('click', () => {
             const roomId = btn.getAttribute('data-room');
-            this.send({ type: 'JOIN_ROOM', roomId });
+            this.send({
+              type: 'JOIN_ROOM',
+              roomId,
+              carName: this.game.playerCar.name,
+              carModel: this.game.playerCar.model,
+              carData: this.game.playerCar,
+              hp: this.game.playerCarStats?.hp || 650
+            });
           });
         });
       }
@@ -389,23 +434,54 @@ class MultiplayerManager {
     const p1 = room.players[0];
     const p2 = room.players[1];
 
-    document.getElementById('roomPlayer1Name').innerText = p1 ? `${p1.name} (${p1.hp} HP)` : 'รอผู้เล่น...';
+    document.getElementById('roomPlayer1Name').innerText = p1 ? `${p1.name} (${p1.carName || 'Drag Car'} • ${p1.hp} HP)` : 'รอผู้เล่น...';
     document.getElementById('roomPlayer1Ready').innerText = p1?.ready ? '✅ พร้อมแล้ว' : '⏳ รอเตรียมตัว';
+    document.getElementById('roomPlayer1Ready').style.color = p1?.ready ? '#4ade80' : '#fde047';
 
-    document.getElementById('roomPlayer2Name').innerText = p2 ? `${p2.name} (${p2.hp} HP)` : 'รอผู้เล่นคนที่ 2...';
+    document.getElementById('roomPlayer2Name').innerText = p2 ? `${p2.name} (${p2.carName || 'Drag Car'} • ${p2.hp} HP)` : 'รอผู้เล่นคนที่ 2...';
     document.getElementById('roomPlayer2Ready').innerText = p2?.ready ? '✅ พร้อมแล้ว' : '⏳ รอเตรียมตัว';
+    document.getElementById('roomPlayer2Ready').style.color = p2?.ready ? '#4ade80' : '#fde047';
+
+    const isVirtualRoom = Boolean(room.isVirtual || this.isStaticFallback);
+    const myId = isVirtualRoom ? 1 : this.clientId;
+    const myPlayer = room.players.find(p => p.id === myId);
 
     const readyBtn = document.getElementById('btnRoomReady');
     if (readyBtn) {
-      readyBtn.disabled = !p2; // Need 2 players to start
-      readyBtn.onclick = () => {
-        this.send({ type: 'PLAYER_READY' });
-        readyBtn.innerText = '✅ คุณพร้อมแล้ว!';
+      if (!p2) {
         readyBtn.disabled = true;
+        readyBtn.innerText = '⏳ รอผู้เล่นคนที่ 2 เข้าห้อง...';
+      } else if (myPlayer && myPlayer.ready) {
+        readyBtn.disabled = true;
+        readyBtn.innerText = '⏳ รอคู่แข่งกดพร้อม (WAITING FOR OPPONENT)...';
+      } else {
+        readyBtn.disabled = false;
+        readyBtn.innerText = '🏁 กดพร้อมลงแข่ง (READY)';
+      }
 
-        if (room.players.length === 2) {
-          // Launch race scene
-          this.startMultiplayerRace(room);
+      readyBtn.onclick = () => {
+        if (!p2) return;
+        if (myPlayer) myPlayer.ready = true;
+
+        readyBtn.innerText = '⏳ รอคู่แข่งกดพร้อม (WAITING FOR OPPONENT)...';
+        readyBtn.disabled = true;
+        this.renderRoomModal(room);
+
+        this.send({
+          type: 'PLAYER_READY',
+          carName: this.game.playerCar.name,
+          carModel: this.game.playerCar.model,
+          carData: this.game.playerCar,
+          hp: this.game.playerCarStats?.hp || 650
+        });
+
+        // In Virtual/Static Fallback mode, start only when both virtual players are ready
+        if (isVirtualRoom && room.players.length === 2 && room.players.every(p => p.ready)) {
+          setTimeout(() => {
+            if (this.currentRoom && this.currentRoom.id === room.id) {
+              this.startMultiplayerRace(room);
+            }
+          }, 400);
         }
       };
     }
@@ -422,7 +498,10 @@ class MultiplayerManager {
 
     document.getElementById('multiplayerModal').style.display = 'none';
 
-    const oppPlayer = room.players.find(p => p.name !== this.game.playerName) || room.players[1] || room.players[0];
+    const isVirtualRoom = Boolean(room.isVirtual || this.isStaticFallback);
+    const myId = isVirtualRoom ? 1 : this.clientId;
+    const oppPlayer = room.players.find(p => p.id !== myId) || room.players[1] || room.players[0];
+
     this.game.raceManager.wager = room.wager;
     if (this.game.money >= room.wager) {
       this.game.money -= room.wager;
@@ -432,32 +511,52 @@ class MultiplayerManager {
     const targetDist = this.game.raceManager.selectedDistance?.meters || 402.336;
     this.game.raceManager.playerCar = new CarPhysics(this.game.playerCar, false, null, targetDist);
 
-    const oppCarData = JSON.parse(JSON.stringify(DEFAULT_CAR));
-    if (oppPlayer && oppPlayer.carName && oppPlayer.carName.includes('Ranger')) {
+    let oppCarData = oppPlayer?.carData
+      ? JSON.parse(JSON.stringify(oppPlayer.carData))
+      : JSON.parse(JSON.stringify(DEFAULT_CAR));
+
+    const isOppRanger = Boolean(
+      oppPlayer?.carModel === 'car_ford_ranger_2004' ||
+      (oppPlayer?.carName && oppPlayer.carName.includes('Ranger')) ||
+      oppCarData?.model === 'car_ford_ranger_2004'
+    );
+
+    if (isOppRanger) {
       oppCarData.model = 'car_ford_ranger_2004';
       oppCarData.bodyType = 'car_ford_ranger_2004';
+      oppCarData.name = 'Ford Ranger 2.5 Open Cab (2004)';
+      oppCarData.parts = oppCarData.parts || {};
       oppCarData.parts.model = 'car_ford_ranger_2004';
       oppCarData.parts.body = 'body_ford_ranger_2004';
+    } else {
+      oppCarData.model = 'car_porsche_911_turbo_s';
+      oppCarData.bodyType = 'car_porsche_911_turbo_s';
+      oppCarData.name = 'Porsche 911 Turbo S (992)';
+      oppCarData.parts = oppCarData.parts || {};
+      oppCarData.parts.model = 'car_porsche_911_turbo_s';
+      oppCarData.parts.body = 'body_porsche_911_turbo_s';
     }
 
-    if (room.isVirtual || this.isStaticFallback) {
+    const oppBotConf = {
+      name: oppPlayer?.name || 'Online Challenger',
+      carName: oppCarData.name,
+      wager: room.wager,
+      stats: {
+        hp: oppPlayer?.hp || 650,
+        shiftSkill: 0.9,
+        reactionTime: 0.14
+      }
+    };
+    this.game.raceManager.botConfig = oppBotConf;
+
+    if (isVirtualRoom) {
       this.game.raceManager.mode = 'bot';
       this.game.raceManager.numOpponents = 1;
-      const virtualBotConf = {
-        name: oppPlayer?.name || 'Online Challenger',
-        carName: oppPlayer?.carName || 'Porsche 911 Turbo S (992)',
-        wager: room.wager,
-        stats: {
-          hp: oppPlayer?.hp || 650,
-          shiftSkill: 0.9,
-          reactionTime: 0.14
-        }
-      };
-      this.game.raceManager.botConfig = virtualBotConf;
-      this.game.raceManager.opponentCar = new CarPhysics(oppCarData, true, virtualBotConf, targetDist);
+      this.game.raceManager.opponentCar = new CarPhysics(oppCarData, true, oppBotConf, targetDist);
     } else {
       this.game.raceManager.mode = 'multiplayer';
-      this.game.raceManager.opponentCar = new CarPhysics(oppCarData, false, null, targetDist);
+      this.game.raceManager.numOpponents = 1;
+      this.game.raceManager.opponentCar = new CarPhysics(oppCarData, false, oppBotConf, targetDist);
     }
 
     this.game.raceManager.opponentCars = [this.game.raceManager.opponentCar];
@@ -473,7 +572,14 @@ class MultiplayerManager {
       gear: car.gear,
       nos: car.nosActive,
       wheelie: car.wheelie,
-      blown: car.isBlown
+      blown: car.isBlown,
+      isFinished: car.isFinished,
+      timeQuarterMile: car.timeQuarterMile,
+      time60ft: car.time60ft,
+      time330ft: car.time330ft,
+      time660ft: car.time660ft,
+      finishTrapSpeed: car.finishTrapSpeed,
+      falseStart: this.game.raceManager.falseStart
     });
   }
 

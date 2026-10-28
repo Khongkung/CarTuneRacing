@@ -261,9 +261,11 @@ function handleClientMessage(socket, data) {
   switch (data.type) {
     case 'LOGIN': {
       client.name = (data.name || 'Racer #' + client.id).substring(0, 16);
-      client.carName = data.carName || 'Custom Drag Car';
-      client.hp = data.hp || 200;
-      client.money = data.money || 2500;
+      client.carName = data.carName || 'Porsche 911 Turbo S (992)';
+      client.carModel = data.carModel || 'car_porsche_911_turbo_s';
+      client.carData = data.carData || null;
+      client.hp = data.hp || 650;
+      client.money = data.money || 3500;
       sendWSFrame(socket, {
         type: 'LOGIN_OK',
         clientId: client.id,
@@ -275,13 +277,32 @@ function handleClientMessage(socket, data) {
 
     case 'UPDATE_CAR': {
       client.carName = data.carName || client.carName;
+      client.carModel = data.carModel || client.carModel;
+      if (data.carData) client.carData = data.carData;
       client.hp = data.hp || client.hp;
+      if (client.roomId) {
+        const room = rooms.get(client.roomId);
+        if (room) {
+          for (const p of room.players) {
+            sendWSFrame(p.socket, {
+              type: 'ROOM_UPDATE',
+              room: serializeRoom(room)
+            });
+          }
+        }
+      }
       broadcastLobbyState();
       break;
     }
 
     case 'CREATE_ROOM': {
       if (client.roomId) leaveCurrentRoom(socket);
+      if (data.carName) client.carName = data.carName;
+      if (data.carModel) client.carModel = data.carModel;
+      if (data.carData) client.carData = data.carData;
+      if (data.hp) client.hp = data.hp;
+      client.ready = false;
+
       const roomId = 'room_' + (++nextRoomId);
       const wager = Math.max(0, parseInt(data.wager, 10) || 100);
       const room = {
@@ -326,6 +347,11 @@ function handleClientMessage(socket, data) {
       }
 
       if (client.roomId) leaveCurrentRoom(socket);
+      if (data.carName) client.carName = data.carName;
+      if (data.carModel) client.carModel = data.carModel;
+      if (data.carData) client.carData = data.carData;
+      if (data.hp) client.hp = data.hp;
+      client.ready = false;
 
       room.players.push(client);
       client.roomId = room.id;
@@ -337,7 +363,7 @@ function handleClientMessage(socket, data) {
         slot: 1 // Lane 2
       });
 
-      // Notify host that opponent joined
+      // Notify both players that opponent joined
       for (const p of room.players) {
         sendWSFrame(p.socket, {
           type: 'ROOM_UPDATE',
@@ -358,19 +384,36 @@ function handleClientMessage(socket, data) {
       const room = rooms.get(client.roomId);
       if (!room || room.players.length < 2) return;
 
+      if (data.carName) client.carName = data.carName;
+      if (data.carModel) client.carModel = data.carModel;
+      if (data.carData) client.carData = data.carData;
+      if (data.hp) client.hp = data.hp;
+
       client.ready = true;
-      const allReady = room.players.every(p => p.ready);
+      const allReady = room.players.length === 2 && room.players.every(p => p.ready);
+      const serialized = serializeRoom(room);
 
       for (const p of room.players) {
+        sendWSFrame(p.socket, {
+          type: 'ROOM_UPDATE',
+          room: serialized
+        });
         sendWSFrame(p.socket, {
           type: 'PLAYER_READY_STATUS',
           playerId: client.id,
           ready: true,
-          allReady: allReady
+          allReady: allReady,
+          room: serialized
         });
       }
 
       if (allReady && room.status === 'waiting') {
+        for (const p of room.players) {
+          sendWSFrame(p.socket, {
+            type: 'RACE_START',
+            room: serialized
+          });
+        }
         startRaceSequence(room);
       }
       break;
@@ -393,7 +436,14 @@ function handleClientMessage(socket, data) {
             gear: data.gear,
             nos: data.nos,
             wheelie: data.wheelie,
-            blown: data.blown
+            blown: data.blown,
+            isFinished: data.isFinished,
+            timeQuarterMile: data.timeQuarterMile,
+            time60ft: data.time60ft,
+            time330ft: data.time330ft,
+            time660ft: data.time660ft,
+            finishTrapSpeed: data.finishTrapSpeed,
+            falseStart: data.falseStart
           });
         }
       }
@@ -570,6 +620,8 @@ function serializeRoom(room) {
       id: p.id,
       name: p.name,
       carName: p.carName,
+      carModel: p.carModel || 'car_porsche_911_turbo_s',
+      carData: p.carData || null,
       hp: p.hp,
       ready: !!p.ready,
       slot: idx
@@ -601,9 +653,11 @@ server.on('upgrade', (req, socket, head) => {
     id: clientId,
     socket: socket,
     name: 'Racer #' + clientId,
-    carName: 'Stock Chassis',
-    hp: 150,
-    money: 3000,
+    carName: 'Porsche 911 Turbo S (992)',
+    carModel: 'car_porsche_911_turbo_s',
+    carData: null,
+    hp: 650,
+    money: 3500,
     roomId: null,
     ready: false
   };

@@ -41,12 +41,14 @@ class PixelRenderer {
   // Helper to check if carData is the 2004 Ford Ranger 2.5 Open Cab
   isFordRanger(carData) {
     if (!carData) return false;
+    if (carData.model === 'car_ford_ranger_2004') return true;
+    if (carData.model === 'car_porsche_911_turbo_s') return false;
     const parts = carData.parts || {};
+    if (parts.model === 'car_ford_ranger_2004') return true;
+    if (parts.model === 'car_porsche_911_turbo_s') return false;
     return (
-      carData.model === 'car_ford_ranger_2004' ||
       carData.bodyType === 'car_ford_ranger_2004' ||
       carData.bodyType === 'body_ford_ranger_2004' ||
-      parts.model === 'car_ford_ranger_2004' ||
       parts.body === 'body_ford_ranger_2004'
     );
   }
