@@ -1,0 +1,8 @@
+[build]
+  publish = "public"
+  command = "echo 'Deploying CarTuneRacing static assets'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

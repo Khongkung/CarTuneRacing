@@ -1,0 +1,24 @@
+{
+  "name": "project_cartuneracing",
+  "version": "1.0.0",
+  "description": "2D Pixel Art Modular Car Tuning & Drag Racing Game",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo \"Static assets ready in ./public\""
+  },
+  "keywords": [
+    "pixel-art",
+    "racing",
+    "tuning",
+    "drag-racing",
+    "multiplayer",
+    "zero-dependency"
+  ],
+  "author": "",
+  "license": "MIT"
+}

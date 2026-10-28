@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarTuneRacing 2D - เกมแต่งรถ จูนเครื่องยนต์ & แข่งแดร็ก Multiplayer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Retro CRT Scanline overlay -->
+  <div class="scanlines"></div>
+
+  <!-- Top Navbar -->
+  <header class="game-navbar">
+    <div class="nav-brand">
+      <span class="brand-logo">🏁 CarTuneRacing 2D</span>
+      <span class="brand-tagline">โมดูลาร์จูนเนอร์ & แดร็ก 402m</span>
+    </div>
+
+    <div class="nav-stats">
+      <div class="player-wallet">
+        <span>💰</span>
+        <span id="playerMoneyDisplay">$3,500</span>
+      </div>
+      <div id="onlineStatusBadge" class="status-offline">
+        🔴 เชื่อมต่อเซิร์ฟเวอร์...
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button id="btnEmergencyCash" class="nav-btn" style="display: none; background: #eab308; color: #000; font-weight: 800; border: 2px solid #fff; box-shadow: 0 0 10px #eab308;">🎁 ขอเงินสปอนเซอร์ฉุกเฉิน (+$1,000)</button>
+      <button id="navSettings" class="nav-btn">⚙️ ตั้งค่าเสียง</button>
+      <button id="btnSoundToggle" class="nav-btn">🔊 ปิดเสียง</button>
+    </div>
+  </header>
+
+  <!-- ================= 0. TITLE / COVER SCREEN ================= -->
+  <div id="titleScreen" class="title-screen-overlay">
+    <div class="title-screen-content">
+      <div class="title-retro-badge">🏁 RETRO 2D DRAG RACING & MODULAR TUNING</div>
+      <h1 class="title-game-logo">CarTuneRacing</h1>
+      <p class="title-sub">เกมแต่งรถ โมดูลาร์จูนเนอร์ & แข่งแดร็ก 402m 2D ปรับจูนอิสระไร้ขีดจำกัด</p>
+      
+      <div class="title-menu-actions">
+        <button id="btnTitleStart" class="title-btn title-btn-primary">
+          <span class="title-btn-icon">🎮</span> เริ่มเกม (START GAME)
+        </button>
+        <button id="btnTitleSettings" class="title-btn title-btn-secondary">
+          <span class="title-btn-icon">⚙️</span> ตั้งค่าเสียง (SETTINGS)
+        </button>
+        <button id="btnTitleFarm" class="title-btn title-btn-green">
+          <span class="title-btn-icon">🌾</span> วิ่งซ้อมจับเวลา (FREE TRIAL)
+        </button>
+      </div>
+
+      <div class="title-footer-info">
+        <span>🏁 CarTuneRacing Official v2.5</span>
+        <span>•</span>
+        <span>ระบบเลือกซื้อรถรายคัน & มุมกล้องห้องเครื่องเปิดฝากระโปรง LIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SETTINGS MODAL ================= -->
+  <div id="settingsModal" class="game-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <span class="modal-title">⚙️ ตั้งค่าระดับเสียงและเกม (GAME SETTINGS)</span>
+        <button class="btn-close-modal" id="btnCloseSettings">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <div class="setting-item">
+          <div class="setting-header">
+            <span>🔊 ระดับเสียงหลัก (Master Volume)</span>
+            <span id="labelMasterVol" class="setting-val">80%</span>
+          </div>
+          <input type="range" id="sliderMasterVol" class="setting-range" min="0" max="100" value="80">
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-header">
+            <span>🏎️ เสียงเครื่องยนต์ & บูสต์ (Engine Volume)</span>
+            <span id="labelEngineVol" class="setting-val">85%</span>
+          </div>
+          <input type="range" id="sliderEngineVol" class="setting-range" min="0" max="100" value="85">
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-header">
+            <span>💥 เอฟเฟกต์เสียง & ปืนไฟ (SFX Volume)</span>
+            <span id="labelSfxVol" class="setting-val">80%</span>
+          </div>
+          <input type="range" id="sliderSfxVol" class="setting-range" min="0" max="100" value="80">
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button id="btnTestSound" class="btn" style="flex: 1; background: #0369a1; color: #fff; padding: 12px; font-weight: 700;">
+            🔊 ทดสอบเสียง (TEST SOUND)
+          </button>
+          <button id="btnSaveSettings" class="btn btn-buy" style="flex: 1; padding: 12px; font-weight: 700;">
+            💾 บันทึกและปิด (SAVE)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 1. GARAGE CAR SELECTION VIEW ================= -->
+  <main id="garageView" class="garage-roster-view">
+    <!-- Top Header Card -->
+    <div class="roster-header-card">
+      <div id="rosterCarCategory" class="roster-badge-category">GERMAN SUPERCAR</div>
+      <h2 id="rosterCarName" class="roster-title">Porsche 911 Turbo S (992)</h2>
+      <div id="rosterCarBadge" class="roster-tagline">3.8L Twin-Turbo Flat-6 Supercar</div>
+    </div>
+
+    <!-- Center Stage: Prev Button | Canvas | Next Button -->
+    <div class="roster-stage">
+      <button id="btnPrevCar" class="btn-roster-nav btn-roster-prev" title="คันก่อนหน้า">
+        <span class="nav-arrow">◀</span>
+        <span class="nav-sub">ก่อนหน้า</span>
+      </button>
+
+      <div class="roster-canvas-wrapper">
+        <canvas id="garageCanvas" class="garage-canvas" width="800" height="446"></canvas>
+        <div class="canvas-overlay-controls">
+          <button id="toggleXrayBtn" class="btn-overlay">🔍 โหมดเอ็กซเรย์ (X-RAY BODY)</button>
+        </div>
+      </div>
+
+      <button id="btnNextCar" class="btn-roster-nav btn-roster-next" title="คันถัดไป">
+        <span class="nav-arrow">▶</span>
+        <span class="nav-sub">ถัดไป</span>
+      </button>
+    </div>
+
+    <!-- Centered Action & Buy Bar (ชัดเจน สวยงาม มองเห็นราคาง่าย) -->
+    <div class="roster-action-bar">
+      <button id="btnSelectOrBuyCar" class="btn-car-action btn-action-owned">
+        ✅ ใช้งานคันนี้ (CURRENT CAR)
+      </button>
+    </div>
+
+    <!-- Overview Stats Card (Rough / High-level stats in 1 horizontal row) -->
+    <div class="roster-overview-card">
+      <div class="overview-stat-item">
+        <span class="overview-label">⚡ กำลังเครื่องยนต์</span>
+        <span id="overviewHp" class="overview-value">650 HP</span>
+      </div>
+      <div class="overview-stat-item">
+        <span class="overview-label">🏁 ความเร็วสูงสุด</span>
+        <span id="overviewTopSpeed" class="overview-value">330 km/h</span>
+      </div>
+      <div class="overview-stat-item">
+        <span class="overview-label">⚖️ น้ำหนักตัวรถ</span>
+        <span id="overviewWeight" class="overview-value">1,445 kg</span>
+      </div>
+      <div class="overview-stat-item">
+        <span class="overview-label">💨 แรงต้านลม (Cd)</span>
+        <span id="overviewDrag" class="overview-value">0.29</span>
+      </div>
+      <div class="overview-stat-item">
+        <span class="overview-label">🏷️ สถานะ / ราคา</span>
+        <span id="overviewOwnership" class="overview-value" style="color: #4ade80;">มีในครอบครอง</span>
+      </div>
+    </div>
+
+    <!-- Bottom Action Toolbar (No Dyno button here - Dyno is in Workshop) -->
+    <div class="roster-bottom-toolbar">
+      <button id="btnOpenWorkshop" class="toolbar-btn toolbar-btn-workshop">
+        🛠️ เข้าแต่งรถ & จูนไดโน่ (WORKSHOP)
+      </button>
+      <button id="btnGarageRaceBots" class="toolbar-btn toolbar-btn-race">
+        🤖 แข่งกับบอท (CAREER)
+      </button>
+      <button id="btnGarageRaceMultiplayer" class="toolbar-btn toolbar-btn-multi">
+        🌐 ออนไลน์ 1v1 (MULTIPLAYER)
+      </button>
+      <button id="btnGarageRaceFarm" class="toolbar-btn toolbar-btn-farm">
+        🌾 วิ่งซ้อมฟาร์มเงิน (FREE)
+      </button>
+      <button id="btnGarageSettings" class="toolbar-btn toolbar-btn-settings">
+        ⚙️ ตั้งค่าเสียง (SETTINGS)
+      </button>
+      <button id="btnGarageTitle" class="toolbar-btn toolbar-btn-title">
+        🏠 หน้าหลัก (TITLE)
+      </button>
+    </div>
+  </main>
+
+  <!-- ================= 2. WORKSHOP CUSTOMIZATION VIEW ================= -->
+  <main id="workshopView" class="workshop-container" style="display: none;">
+    <!-- Top Header: Navigation & Dynamic Camera Tabs -->
+    <div class="workshop-header-bar">
+      <button id="btnWorkshopBack" class="btn-workshop-back">
+        ◀ กลับไปโรงรถ (GARAGE)
+      </button>
+      
+      <div class="workshop-camera-pills">
+        <button id="btnCamEngine" class="cam-pill active" data-cam="engine">
+          🔧 ห้องเครื่องยนต์ (ENGINE BAY)
+        </button>
+        <button id="btnCamWheel" class="cam-pill" data-cam="wheel">
+          🛞 ล้อ & เบรก (WHEELS & BRAKES)
+        </button>
+        <button id="btnCamBody" class="cam-pill" data-cam="body">
+          🏎️ บอดี้คิท (MODULAR BODY)
+        </button>
+        <button id="btnCamOverview" class="cam-pill" data-cam="overview">
+          🔍 มุมมองเต็มคัน (FULL VIEW)
+        </button>
+        <button id="btnWorkshopDyno" class="cam-pill cam-pill-dyno">
+          📈 จูนกล่อง ECU & ไดโน่ (DYNO)
+        </button>
+      </div>
+
+      <div class="workshop-car-badge" id="workshopCarBadge">
+        Porsche 911 Turbo S (992)
+      </div>
+    </div>
+
+    <!-- 3-Column Workshop Layout: Categories | Center Canvas & Parts Shop | Diagnostics & Detailed Specs -->
+    <div class="workshop-grid-layout">
+      <!-- Left: Filtered Categories for Active Camera Mode -->
+      <aside class="panel-box">
+        <div class="panel-header">
+          <span id="workshopCatHeader">🔩 หมวดหมู่อะไหล่ (PARTS)</span>
+        </div>
+        <div id="garageCategories" class="categories-list">
+          <!-- Rendered via JS -->
+        </div>
+      </aside>
+
+      <!-- Center: Car Preview Canvas & Parts Shop List -->
+      <section class="garage-center-view">
+        <div class="canvas-wrapper">
+          <canvas id="workshopCanvas" class="garage-canvas" width="800" height="446"></canvas>
+          <div class="canvas-overlay-controls">
+            <span id="cameraModeIndicator" class="camera-mode-pill">📷 ห้องเครื่องยนต์ท้ายรถ (PORSCHE 911 REAR ENGINE BAY)</span>
+            <button id="toggleWorkshopXrayBtn" class="btn-overlay">🔍 เอ็กซเรย์</button>
+          </div>
+        </div>
+
+        <div class="panel-header">
+          <span>🛒 คลังอะไหล่ & ชิ้นส่วนแต่ง (PARTS SHOP & INVENTORY)</span>
+        </div>
+        <div id="garagePartsList" class="parts-list-container">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- Right: Detailed Diagnostics, Starter Crank, Spec Stats -->
+      <aside class="panel-box garage-right-panel">
+        <div class="diag-panel">
+          <button id="testEngineBtn" class="btn-start-engine">🔑 สตาร์ทเครื่องยนต์ (TEST CRANK)</button>
+
+          <!-- Rev & Throttle Testing Controls -->
+          <div id="garageRevControls" class="garage-rev-box" style="display: none;">
+            <div class="rev-meter-container">
+              <div class="rev-meter-header">
+                <span id="garageRpmVal" class="rev-meter-rpm">950 RPM</span>
+                <span id="garageBoostVal" class="rev-meter-boost">0.0 Bar</span>
+              </div>
+              <div class="rev-bar-track">
+                <div id="garageRpmBar" class="rev-bar-fill"></div>
+              </div>
+            </div>
+            <button id="btnRevThrottle" class="btn-rev-throttle">🔥 กดค้างเบิ้นเครื่อง [Space / W]</button>
+          </div>
+
+          <div id="ecuDiagBox" class="diag-box">
+            <div id="ecuDiagMessages">
+              <div class="diag-header">⚡ ระบบวิเคราะห์เครื่องยนต์ (ECU DIAGNOSTICS)</div>
+              <div class="diag-item">กดปุ่มสตาร์ทด้านบนเพื่อตรวจสอบความสมบูรณ์ของระบบเครื่องยนต์</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-header">
+          <span>📊 สเปกและสมรรถนะละเอียด (SPECS)</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">แรงม้าสูงสุด (HP)</div>
+            <div id="hudHp" class="stat-val">0 HP</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">แรงบิดสูงสุด (TORQUE)</div>
+            <div id="hudTorque" class="stat-val">0 Nm</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">น้ำหนักรวม (WEIGHT)</div>
+            <div id="hudWeight" class="stat-val">0 kg</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">อัตราเร่ง 0-100 km/h</div>
+            <div id="hudZeroToHundred" class="stat-val">0.0s</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">เวลา 402m (1/4 MILE)</div>
+            <div id="hudQuarterMile" class="stat-val">0.0s</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">ความเร็วสูงสุด</div>
+            <div id="hudTopSpeed" class="stat-val">0 km/h</div>
+          </div>
+        </div>
+
+        <div class="car-badge-info">
+          <div id="hudEngineBadge" class="badge-pill">กำลังตรวจสอบเครื่องยนต์...</div>
+          <div id="hudInductionBadge" class="badge-pill">ระบบอัดอากาศ...</div>
+          <div class="stat-label">ความเร็วสูงสุดแต่ละเกียร์ (Max Speed per Gear):</div>
+          <div id="hudGearSpeeds" class="gear-speeds-row"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ================= 2. RACE TRACK VIEW ================= -->
+  <section id="raceView" class="race-container">
+    <div id="raceBlownBanner" class="race-blown-banner"></div>
+    <canvas id="raceCanvas" class="race-canvas" width="1200" height="520"></canvas>
+
+    <!-- Cockpit Telemetry HUD -->
+    <div class="race-hud-bar">
+      <div class="hud-cluster">
+        <!-- RPM Tachometer -->
+        <div class="hud-tachometer">
+          <div id="raceRpm" class="tach-val">0</div>
+          <div class="tach-label">RPM</div>
+          <div id="shiftLightIndicator" class="shift-light"></div>
+        </div>
+
+        <!-- Gear Box -->
+        <div class="hud-gear-box">
+          <div id="raceGear" class="gear-display">1</div>
+          <div class="gear-label">GEAR</div>
+        </div>
+
+        <!-- Digital Speedometer -->
+        <div class="hud-speedometer">
+          <div id="raceSpeedKmh" class="speed-val">0</div>
+          <div class="speed-unit">KM / H</div>
+        </div>
+
+        <!-- Throttle, Boost & Temp Gauges -->
+        <div class="hud-sub-gauges">
+          <div class="gauge-item">
+            <span id="raceThrottleVal" class="gauge-val" style="color: #facc15;">0%</span>
+            <span class="gauge-label">THROTTLE</span>
+          </div>
+          <div class="gauge-item">
+            <span id="raceBoostVal" class="gauge-val" style="color: #22c55e;">0.0 Bar</span>
+            <span class="gauge-label">BOOST</span>
+          </div>
+          <div class="gauge-item">
+            <span id="raceTempGauge" class="gauge-val" style="color: #38bdf8;">85°C</span>
+            <span class="gauge-label">COOLANT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distance Progress -->
+      <div class="race-progress-wrapper">
+        <div class="progress-track">
+          <div id="raceProgressBar" class="progress-fill"></div>
+        </div>
+        <div id="raceDistMeters" class="dist-label">0m / 402m</div>
+      </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="race-controls-bar">
+      <button id="pedalGas" class="ctrl-btn btn-gas">🔥 เพิ่มคันเร่ง [W / ↑]</button>
+      <button id="pedalBrake" class="ctrl-btn btn-brake">🔻 ลดคันเร่ง [S / ↓]</button>
+      <button id="btnShiftUp" class="ctrl-btn btn-shift">⬆️ เข้าเกียร์ [Space / E]</button>
+      <button id="btnShiftDown" class="ctrl-btn btn-shift">⬇️ ลดเกียร์ [Q / Shift]</button>
+      <button id="btnLaunchTwoStep" class="ctrl-btn btn-launch">🛑 ล็อกออกตัว 2-Step [B]</button>
+      <button id="btnNos" class="ctrl-btn btn-nos">🚀 ไนตรัส NOS [N]</button>
+    </div>
+  </section>
+
+  <!-- ================= 3. TUNER & DYNO MODAL ================= -->
+  <div id="tunerModal" class="game-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">📈 อู่ปรับจูน ECU & แท่นทดสอบไดโน่ (DYNO TUNER)</span>
+        <button class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body tuner-layout">
+        <!-- Left: Dyno Graph -->
+        <div>
+          <div class="dyno-wrapper">
+            <canvas id="dynoCanvas" class="dyno-canvas" width="480" height="270"></canvas>
+          </div>
+          <button id="runDynoBtn" class="btn-run-dyno">⚡ ทดสอบบนไดโน่ (RUN DYNO PULL)</button>
+        </div>
+
+        <!-- Right: Real Automotive Tuning Sliders & Numeric Inputs -->
+        <div class="tuning-controls">
+          <div class="tuning-actions-bar">
+            <span class="tuning-badge">♾️ INFINITE TUNING SYSTEM</span>
+            <button id="btnResetTuning" class="btn-reset-tuning" title="รีเซ็ตค่ากลับเป็นค่าเริ่มต้น">🔄 รีเซ็ตค่าโรงงาน</button>
+          </div>
+
+          <!-- Section 1: Boost -->
+          <div class="tune-section-title">🚀 ระบบอัดอากาศ & บูสต์เทอร์โบ (BOOST)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>แรงดันเวสเกตบูสต์ (Wastegate Boost)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneBoostInput" class="tune-num-input" min="0" max="100" step="0.1" value="0.8">
+                <span class="tune-unit">Bar</span>
+              </div>
+            </div>
+            <input type="range" id="tuneBoost" min="0" max="15.0" step="0.1" value="0.8">
+            <span class="tune-hint">ปลดล็อกบูสต์อิสระ! สามารถพิมพ์ตัวเลขได้ตามต้องการ (ระวังก้านสูบหากยังไม่เปลี่ยนชิ้นส่วนแข็งแกร่ง)</span>
+          </div>
+
+          <!-- Section 2: Engine Internals -->
+          <div class="tune-section-title">🔩 ขนาดความจุ & กำลังอัดลูกสูบ (ENGINE INTERNALS)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>ขยายความจุลูกสูบ (Stroker / Bore Scale)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneDispInput" class="tune-num-input" min="0.5" max="20.0" step="0.1" value="1.0">
+                <span class="tune-unit">x</span>
+              </div>
+            </div>
+            <input type="range" id="tuneDisp" min="0.5" max="5.0" step="0.1" value="1.0">
+            <span class="tune-hint">ขยายความจุซีซีลูกสูบ เพิ่มแรงบิดและแรงม้าพื้นฐานแบบทวีคูณ (1.0x ถึง 10.0x+)</span>
+          </div>
+
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>อัตราส่วนกำลังอัด (Compression Ratio CR)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneCrInput" class="tune-num-input" min="6.0" max="25.0" step="0.1" value="10.0">
+                <span class="tune-unit">:1</span>
+              </div>
+            </div>
+            <input type="range" id="tuneCr" min="7.0" max="18.0" step="0.1" value="10.0">
+            <span class="tune-hint">กำลังอัดสูงระเบิดพลังรุนแรงและคันเร่งติดเท้า | กำลังอัดต่ำเหมาะสำหรับแช่บูสต์มหาศาล</span>
+          </div>
+
+          <!-- Section 3: Valvetrain & RPM -->
+          <div class="tune-section-title">🏎️ วาล์ว & รอบเครื่องยนต์ (VALVETRAIN & RPM)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>องศาแคมชาร์ฟท์ (Camshaft Duration)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneCamInput" class="tune-num-input" min="220" max="400" step="1" value="272">
+                <span class="tune-unit">°</span>
+              </div>
+            </div>
+            <input type="range" id="tuneCam" min="240" max="360" step="1" value="272">
+            <span class="tune-hint">องศาสูงเปิดวาล์วลึกและนาน อากาศไหลผ่านมหาศาล เพิ่มแรงม้าช่วงรอบสูง</span>
+          </div>
+
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>รอบตัดเครื่องยนต์ (Rev Limiter RPM)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneLimiterInput" class="tune-num-input" min="4000" max="50000" step="100" value="8400">
+                <span class="tune-unit">RPM</span>
+              </div>
+            </div>
+            <input type="range" id="tuneLimiter" min="5000" max="25000" step="100" value="8400">
+            <span class="tune-hint">ลากรอบได้ทะลุโลกถึง 25,000+ RPM เสียงเครื่องยนต์หวีดคำรามดุจรถ F1</span>
+          </div>
+
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>รอบออกตัว 2-Step (Launch Control RPM)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneLaunchInput" class="tune-num-input" min="2000" max="30000" step="100" value="4500">
+                <span class="tune-unit">RPM</span>
+              </div>
+            </div>
+            <input type="range" id="tuneLaunch" min="3000" max="18000" step="100" value="4500">
+            <span class="tune-hint">รอบที่เครื่องยนต์จะกักบูสต์และยิงไฟแลบที่จุดออกตัว</span>
+          </div>
+
+          <!-- Section 4: Nitrous -->
+          <div class="tune-section-title">🧪 ระบบไนตรัสออกไซด์ (NITROUS CONTROLLER)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>ขนาดการฉีดไนตรัส (NOS Jet Flow Rate)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneNosFlowInput" class="tune-num-input" min="50" max="10000" step="25" value="150">
+                <span class="tune-unit">HP</span>
+              </div>
+            </div>
+            <input type="range" id="tuneNosFlow" min="50" max="3000" step="25" value="150">
+            <span class="tune-hint">กำหนดแรงม้าที่ระเบิดออกมาทันทีเมื่อกดฉีดไนตรัส (ปรับได้ตั้งแต่ 50 ถึง 10,000+ HP!)</span>
+          </div>
+
+          <!-- Section 5: Fuel & Spark -->
+          <div class="tune-section-title">⚡ ระบบน้ำมัน & ไฟจุดระเบิด (FUEL & SPARK)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>อัตราส่วนผสมน้ำมัน/อากาศ (Target AFR)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneAfrInput" class="tune-num-input" min="8.0" max="18.0" step="0.1" value="12.5">
+                <span class="tune-unit">:1</span>
+              </div>
+            </div>
+            <input type="range" id="tuneAfr" min="10.0" max="16.0" step="0.1" value="12.5">
+            <span class="tune-hint">12.2-12.8 ให้แรงม้าสูงสุด | ต่ำกว่า 11 น้ำมันหนา | เกิน 13.5 เสี่ยงเครื่องเขก</span>
+          </div>
+
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>องศาไฟจุดระเบิด (Ignition Advance)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneIgnitionInput" class="tune-num-input" min="-15" max="45" step="1" value="4">
+                <span class="tune-unit">°</span>
+              </div>
+            </div>
+            <input type="range" id="tuneIgnition" min="-10" max="35" step="1" value="4">
+            <span class="tune-hint">ไฟแก่ (+) เพิ่มแรงม้า | ไฟอ่อน (-) สำหรับเซ็ตบูสต์หนักหรือฉีดไนตรัส</span>
+          </div>
+
+          <!-- Section 6: Drivetrain & Tires -->
+          <div class="tune-section-title">⚙️ ระบบส่งกำลัง & ยาง (DRIVETRAIN & TIRES)</div>
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>อัตราทดเฟืองท้าย (Final Drive Ratio)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneFinalDriveInput" class="tune-num-input" min="0.5" max="10.0" step="0.05" value="3.90">
+              </div>
+            </div>
+            <input type="range" id="tuneFinalDrive" min="1.50" max="6.00" step="0.05" value="3.90">
+            <span class="tune-hint">เฟืองท้ายต่ำ (<3.0) ไหลปลายความเร็วสูง 400-600+ km/h | เฟืองท้ายจัด (>4.2) ออกตัวพุ่ง</span>
+          </div>
+
+          <div class="tune-group">
+            <div class="tune-header">
+              <span>แรงดันลมยาง (Tire Pressure PSI)</span>
+              <div class="tune-input-wrap">
+                <input type="number" id="tuneTirePressureInput" class="tune-num-input" min="10" max="50" step="1" value="26">
+                <span class="tune-unit">PSI</span>
+              </div>
+            </div>
+            <input type="range" id="tuneTirePressure" min="12" max="40" step="1" value="26">
+            <span class="tune-hint">ลมยางต่ำ (18-22 PSI) เกาะถนนออกตัวพุ่ง | ลมยางสูง (>30 PSI) วิ่งทางตรงไหลปลาย</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 4. BOT CHALLENGES MODAL ================= -->
+  <div id="botsModal" class="game-modal">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header">
+        <span class="modal-title">🤖 เส้นทางนักแข่งแดร็กมืออาชีพ (DRAG CAREER)</span>
+        <button class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Distance Selection Panel -->
+        <div class="distance-selection-panel">
+          <div class="distance-header">
+            <span>🚩 เลือกระยะทางการแข่งขัน (ยิ่งระยะทางไกล เงินรางวัลยิ่งคูณสูง!):</span>
+          </div>
+          <div class="distance-pills" id="raceDistanceSelector">
+            <!-- Rendered dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Opponent Count Selector Panel -->
+        <div class="distance-selection-panel" style="margin-top: 8px;">
+          <div class="distance-header">
+            <span>👥 เลือกจำนวนคู่แข่งในสนาม (Number of Opponents):</span>
+          </div>
+          <div class="distance-pills" id="raceBotCountSelector">
+            <!-- Rendered dynamically via JS -->
+          </div>
+        </div>
+
+        <div id="botsListContainer" class="bots-list">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. MULTIPLAYER LOBBY MODAL ================= -->
+  <div id="multiplayerModal" class="game-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title">🌐 ล็อบบี้แข่งสดแบบ 1v1 REAL-TIME MULTIPLAYER</span>
+        <button class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="lobby-header">
+          <span id="lobbyOnlineCount">0 คนออนไลน์</span>
+          <button id="btnOpenCreateRoomModal" class="btn btn-buy">➕ สร้างห้องแข่ง 1v1 (วางเงินเดิมพัน)</button>
+        </div>
+
+        <div class="panel-header" style="margin-bottom: 8px;">
+          <span>🏁 รายการห้องแข่งขันที่เปิดอยู่</span>
+        </div>
+        <div id="lobbyRoomsList" class="rooms-list">
+          <!-- Rendered via JS -->
+        </div>
+
+        <div class="panel-header" style="margin-bottom: 8px;">
+          <span>💬 แชทล็อบบี้พูดคุย</span>
+        </div>
+        <div class="chat-container">
+          <div id="chatMessages" class="chat-messages"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" class="chat-input" placeholder="พิมพ์ข้อความคุยกับผู้เล่นอื่น...">
+            <button id="btnSendChat" class="btn-send-chat">ส่ง</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 6. MULTIPLAYER ROOM WAITING MODAL ================= -->
+  <div id="multiplayerRoomModal" class="game-modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <span id="roomTitle" class="modal-title">ห้องแข่งขัน 1v1</span>
+        <button id="btnRoomLeave" class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div style="font-size: 14px; margin-bottom: 12px;">เงินเดิมพันของผู้ชนะ: <strong id="roomWagerVal" style="color: #34d399;">$500</strong></div>
+
+        <div style="display: flex; justify-content: space-around; margin: 20px 0;">
+          <div style="background: #1e293b; padding: 16px; border-radius: 6px; width: 45%;">
+            <div style="font-size: 20px;">🏎️</div>
+            <strong id="roomPlayer1Name">Player 1</strong>
+            <div id="roomPlayer1Ready" style="font-size: 12px; margin-top: 6px; color: #4ade80;">พร้อมแล้ว</div>
+          </div>
+          <div style="background: #1e293b; padding: 16px; border-radius: 6px; width: 45%;">
+            <div style="font-size: 20px;">🏎️</div>
+            <strong id="roomPlayer2Name">รอผู้เล่น...</strong>
+            <div id="roomPlayer2Ready" style="font-size: 12px; margin-top: 6px; color: #fde047;">รอเตรียมตัว</div>
+          </div>
+        </div>
+
+        <button id="btnRoomReady" class="btn btn-race" style="width: 100%; padding: 14px; font-size: 16px;">
+          🏁 กดพร้อมลงแข่ง (READY)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 7. OFFICIAL DRAG TIME SLIP MODAL ================= -->
+  <div id="timeSlipModal" class="game-modal">
+    <div class="time-slip-card">
+      <div class="slip-header-title">OFFICIAL DRAG STRIP TIME SLIP</div>
+      <div id="slipSubDistance" class="slip-sub">402 METERS (1/4 MILE) ACCELERATION TRIAL</div>
+
+      <div id="slipWinnerBanner" class="slip-result-banner">🏆 YOU WIN!</div>
+      <div id="slipReason" style="text-align: center; font-size: 12px; margin-bottom: 10px;"></div>
+      <div style="text-align: center; font-weight: 800; font-size: 16px; margin-bottom: 12px;">
+        เงินรางวัลเดิมพัน: <span id="slipPrize" style="color: #16a34a;">+$1,000</span>
+      </div>
+
+      <!-- 1v1 Table -->
+      <table id="slipTableSingle" class="slip-table">
+        <thead>
+          <tr>
+            <th>จุดวัดระยะทาง</th>
+            <th id="slipPlayerName">คุณ (YOU)</th>
+            <th id="slipOppName">คู่แข่ง (OPP)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>60 FT</td>
+            <td id="slipPlayer60ft">0.000s</td>
+            <td id="slipOpp60ft">0.000s</td>
+          </tr>
+          <tr>
+            <td>330 FT</td>
+            <td id="slipPlayer330ft">0.000s</td>
+            <td id="slipOpp330ft">0.000s</td>
+          </tr>
+          <tr>
+            <td>1/8 MILE (660 FT)</td>
+            <td id="slipPlayer660ft">0.000s</td>
+            <td id="slipOpp660ft">0.000s</td>
+          </tr>
+          <tr style="font-weight: 800; background: #fef08a;">
+            <td id="slipEtDistanceLabel">1/4 MILE ET (เวลา)</td>
+            <td id="slipPlayerET">0.000s</td>
+            <td id="slipOppET">0.000s</td>
+          </tr>
+          <tr style="font-weight: 800;">
+            <td>ความเร็วเข้าเส้น (TRAP)</td>
+            <td id="slipPlayerTrap">0 km/h</td>
+            <td id="slipOppTrap">0 km/h</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Multi-Car Grid Standings Leaderboard -->
+      <div id="slipMultiContainer" style="display: none; margin-bottom: 12px; max-height: 240px; overflow-y: auto;">
+        <table class="slip-table">
+          <thead>
+            <tr>
+              <th>อันดับ</th>
+              <th>นักแข่ง (RACER)</th>
+              <th>รถแข่ง (CAR)</th>
+              <th>เวลา (ET)</th>
+              <th>ความเร็ว</th>
+              <th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="slipMultiLeaderboardBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="slip-actions">
+        <button id="btnSlipRematch" class="btn-slip btn-slip-rematch">🔄 แข่งแก้มือ (REMATCH)</button>
+        <button id="btnSlipGarage" class="btn-slip btn-slip-garage">🏭 กลับไปโรงรถ (GARAGE)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 8. RETRO ARCADE CENTER NOTIFICATION MODAL ================= -->
+  <div id="gameNotificationModal" class="game-modal" style="display: none;">
+    <div class="notify-card">
+      <div id="notifyIcon" class="notify-icon">🎁</div>
+      <div id="notifyTitle" class="notify-title">แจ้งเตือน</div>
+      <div id="notifyMessage" class="notify-message">รายละเอียดข้อความ</div>
+      <button id="btnNotifyOk" class="notify-btn">ตกลง (OK)</button>
+    </div>
+  </div>
+
+  <!-- GAME SCRIPTS -->
+  <script src="js/engine/constants.js"></script>
+  <script src="js/engine/audio.js"></script>
+  <script src="js/engine/sprites.js"></script>
+  <script src="js/engine/car.js"></script>
+  <script src="js/game/garage.js"></script>
+  <script src="js/game/tuner.js"></script>
+  <script src="js/game/race.js"></script>
+  <script src="js/game/multiplayer.js"></script>
+  <script src="js/game/main.js"></script>
+</body>
+</html>
