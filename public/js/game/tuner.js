@@ -135,7 +135,7 @@ class TunerUI {
 
     this.isDynoRunning = true;
     this.dynoProgress = 0;
-    audio.startEngineSound(stats.idleRpm);
+    audio.startEngineSound(stats.idleRpm, this.game.playerCar);
 
     const runBtn = document.getElementById('runDynoBtn');
     if (runBtn) runBtn.innerText = '📈 กำลังเร่งรอบบนแท่นไดโน่...';

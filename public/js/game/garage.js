@@ -1167,16 +1167,17 @@ class GarageUI {
     }
 
     const effectiveStats = CarSystem.calculateStats(effectiveCar);
+    const baseIdle = effectiveStats.idleRpm || 900;
     this.isEngineRunning = true;
-    this.garageRpm = effectiveStats.idleRpm || 900;
-    this.garageThrottle = 0;
+    this.garageRpm = baseIdle + 580; // Realistic cold-start ignition flare!
+    this.garageThrottle = 0.25;
     this.garageBoost = 0;
     audio.playCrankSound();
     setTimeout(() => {
       if (this.isEngineRunning) {
-        audio.startEngineSound(this.garageRpm, effectiveCar);
+        audio.startEngineSound(baseIdle, effectiveCar);
       }
-    }, 400);
+    }, 340);
 
     const revControls = document.getElementById('garageRevControls');
     if (revControls) {
