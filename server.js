@@ -166,6 +166,11 @@ function broadcastLobbyState() {
       name: room.name,
       hostName: room.hostName,
       wager: room.wager,
+      distanceId: room.distanceId || '0.25',
+      distanceMeters: room.distanceMeters || 402.336,
+      distanceName: room.distanceName || '1/4 ไมล์ (402m)',
+      distanceLabel: room.distanceLabel || '1/4 MILE',
+      prizeMultiplier: room.prizeMultiplier || 1.0,
       status: room.status,
       playerCount: room.players.length
     });
@@ -305,10 +310,21 @@ function handleClientMessage(socket, data) {
 
       const roomId = 'room_' + (++nextRoomId);
       const wager = Math.max(0, parseInt(data.wager, 10) || 100);
+      const distanceId = data.distanceId || '0.25';
+      const distanceMeters = parseFloat(data.distanceMeters) || 402.336;
+      const distanceName = data.distanceName || '1/4 ไมล์ (402m)';
+      const distanceLabel = data.distanceLabel || '1/4 MILE';
+      const prizeMultiplier = parseFloat(data.prizeMultiplier) || 1.0;
+
       const room = {
         id: roomId,
         name: data.roomName || `${client.name}'s Drag Battle`,
         wager: wager,
+        distanceId: distanceId,
+        distanceMeters: distanceMeters,
+        distanceName: distanceName,
+        distanceLabel: distanceLabel,
+        prizeMultiplier: prizeMultiplier,
         hostId: client.id,
         hostName: client.name,
         players: [client],
@@ -608,7 +624,7 @@ function finalizeRace(room, earlyFoulLoserId = null) {
     }
   }
 
-  const pot = room.wager * 2;
+  const pot = Math.round(room.wager * 2 * (room.prizeMultiplier || 1.0));
 
   for (const p of room.players) {
     sendWSFrame(p.socket, {
@@ -678,6 +694,11 @@ function serializeRoom(room) {
     id: room.id,
     name: room.name,
     wager: room.wager,
+    distanceId: room.distanceId || '0.25',
+    distanceMeters: room.distanceMeters || 402.336,
+    distanceName: room.distanceName || '1/4 ไมล์ (402m)',
+    distanceLabel: room.distanceLabel || '1/4 MILE',
+    prizeMultiplier: room.prizeMultiplier || 1.0,
     hostId: room.hostId,
     hostName: room.hostName,
     status: room.status,

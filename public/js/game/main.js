@@ -442,14 +442,58 @@ class Game {
       });
     }
 
-    // Multiplayer Create Room Button
-    const btnCreateRoom = document.getElementById('btnOpenCreateRoomModal');
-    if (btnCreateRoom) {
-      btnCreateRoom.addEventListener('click', () => {
-        const roomName = prompt('ตั้งชื่อห้องแข่งขัน 1v1:', `${this.playerName}'s Drag Race`);
-        if (!roomName) return;
-        const wagerStr = prompt('จำนวนเงินเดิมพัน ($):', '500');
-        const wager = parseInt(wagerStr, 10) || 100;
+    // Multiplayer Create Room Modal & Distance Selection
+    const btnOpenCreate = document.getElementById('btnOpenCreateRoomModal');
+    const createModal = document.getElementById('createRoomModal');
+    const btnCancelCreate = document.getElementById('btnCancelCreateRoom');
+    const btnSubmitCreate = document.getElementById('btnSubmitCreateRoom');
+    const inputRoomName = document.getElementById('inputRoomName');
+    const inputRoomWager = document.getElementById('inputRoomWager');
+    const distContainer = document.getElementById('onlineRoomDistanceSelector');
+
+    let selectedOnlineDistId = this.selectedDistanceId || '0.25';
+
+    const renderOnlineDistancePills = () => {
+      if (!distContainer || typeof RACE_DISTANCES === 'undefined') return;
+      distContainer.innerHTML = RACE_DISTANCES.map(d => `
+        <div class="dist-pill ${d.id === selectedOnlineDistId ? 'active' : ''}" data-dist-id="${d.id}">
+          <span class="dist-pill-name">🏁 ${d.label}</span>
+          <span class="dist-pill-mult">รางวัล x${d.prizeMultiplier}</span>
+        </div>
+      `).join('');
+
+      distContainer.querySelectorAll('.dist-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          selectedOnlineDistId = pill.getAttribute('data-dist-id');
+          renderOnlineDistancePills();
+          audio.playClick();
+        });
+      });
+    };
+
+    if (btnOpenCreate) {
+      btnOpenCreate.addEventListener('click', () => {
+        if (createModal) {
+          if (inputRoomName) inputRoomName.value = `${this.playerName}'s Drag Race`;
+          if (inputRoomWager) inputRoomWager.value = '500';
+          renderOnlineDistancePills();
+          createModal.style.display = 'flex';
+          audio.playClick();
+        }
+      });
+    }
+
+    if (btnCancelCreate && createModal) {
+      btnCancelCreate.addEventListener('click', () => {
+        createModal.style.display = 'none';
+        audio.playClick();
+      });
+    }
+
+    if (btnSubmitCreate) {
+      btnSubmitCreate.addEventListener('click', () => {
+        const roomName = inputRoomName?.value?.trim() || `${this.playerName}'s Drag Race`;
+        const wager = parseInt(inputRoomWager?.value, 10) || 100;
 
         if (this.money < wager) {
           window.showGamePopup({
@@ -461,15 +505,27 @@ class Game {
           return;
         }
 
+        const chosenDist = (typeof RACE_DISTANCES !== 'undefined')
+          ? (RACE_DISTANCES.find(d => d.id === selectedOnlineDistId) || RACE_DISTANCES[0])
+          : { id: '0.25', name: '1/4 ไมล์ (402m)', miles: 0.25, meters: 402.336, prizeMultiplier: 1.0, label: '1/4 MILE' };
+
         this.multiplayer.send({
           type: 'CREATE_ROOM',
           roomName: roomName,
           wager: wager,
+          distanceId: chosenDist.id,
+          distanceMeters: chosenDist.meters,
+          distanceName: chosenDist.name,
+          distanceLabel: chosenDist.label,
+          prizeMultiplier: chosenDist.prizeMultiplier,
           carName: this.playerCar.name,
           carModel: this.playerCar.model,
           carData: this.playerCar,
           hp: this.playerCarStats?.hp || 650
         });
+
+        if (createModal) createModal.style.display = 'none';
+        audio.playSuccess();
       });
     }
 

@@ -22,28 +22,43 @@ class MultiplayerManager {
         carName: 'Porsche 911 Turbo S (992)',
         hp: 720,
         wager: 500,
+        distanceId: '0.25',
+        distanceMeters: 402.336,
+        distanceName: '1/4 ไมล์ (402m)',
+        distanceLabel: '1/4 MILE',
+        prizeMultiplier: 1.0,
         status: 'waiting',
         playerCount: 1,
         isVirtual: true
       },
       {
         id: 'vroom_102',
-        name: 'กระบะซิ่ง 2.5 โบใหญ่ ดันราง',
+        name: 'กระบะซิ่ง 2.5 โบใหญ่ ดันราง 1 ไมล์',
         hostName: 'Ranger_2500_Drag',
         carName: 'Ford Ranger 2.5 Open Cab (2004)',
         hp: 580,
         wager: 300,
+        distanceId: '1',
+        distanceMeters: 1609.34,
+        distanceName: '1 ไมล์ (1.6km)',
+        distanceLabel: '1 MILE',
+        prizeMultiplier: 2.5,
         status: 'waiting',
         playerCount: 1,
         isVirtual: true
       },
       {
         id: 'vroom_103',
-        name: '1,000+ HP Pro-Mod Midnight Run',
+        name: '1,000+ HP Pro-Mod Midnight Run 5 ไมล์',
         hostName: 'BoostGod_BKK',
         carName: 'Porsche 911 Turbo S (992)',
         hp: 1150,
         wager: 1500,
+        distanceId: '5',
+        distanceMeters: 8046.72,
+        distanceName: '5 ไมล์ (8.0km)',
+        distanceLabel: '5 MILES',
+        prizeMultiplier: 6.0,
         status: 'waiting',
         playerCount: 1,
         isVirtual: true
@@ -155,6 +170,11 @@ class MultiplayerManager {
           id: 'vroom_' + Date.now(),
           name: data.roomName || `${this.game.playerName}'s Drag Race`,
           wager: wager,
+          distanceId: data.distanceId || '0.25',
+          distanceMeters: parseFloat(data.distanceMeters) || 402.336,
+          distanceName: data.distanceName || '1/4 ไมล์ (402m)',
+          distanceLabel: data.distanceLabel || '1/4 MILE',
+          prizeMultiplier: parseFloat(data.prizeMultiplier) || 1.0,
           hostId: 1,
           hostName: this.game.playerName,
           status: 'waiting',
@@ -197,6 +217,11 @@ class MultiplayerManager {
           id: vRoom.id,
           name: vRoom.name,
           wager: vRoom.wager,
+          distanceId: vRoom.distanceId || '0.25',
+          distanceMeters: vRoom.distanceMeters || 402.336,
+          distanceName: vRoom.distanceName || '1/4 ไมล์ (402m)',
+          distanceLabel: vRoom.distanceLabel || '1/4 MILE',
+          prizeMultiplier: vRoom.prizeMultiplier || 1.0,
           hostId: 2,
           hostName: vRoom.hostName,
           status: 'waiting',
@@ -405,7 +430,10 @@ class MultiplayerManager {
             <div class="room-info">
               <span class="room-name">${r.name}</span>
               <span class="room-host">เจ้าของห้อง: ${r.hostName}</span>
-              <span class="room-wager">เดิมพัน: $${r.wager.toLocaleString()}</span>
+              <div style="font-size: 12px; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <span style="color: #38bdf8; font-weight: 700;">🚩 ${r.distanceName || '1/4 ไมล์ (402m)'}</span>
+                <span class="room-wager">💰 เดิมพัน: $${r.wager.toLocaleString()} (x${r.prizeMultiplier || 1.0})</span>
+              </div>
             </div>
             <div class="room-status">
               <span class="badge ${r.status === 'waiting' ? 'badge-waiting' : 'badge-racing'}">
@@ -447,7 +475,12 @@ class MultiplayerManager {
     modal.style.display = 'flex';
 
     document.getElementById('roomTitle').innerText = room.name;
-    document.getElementById('roomWagerVal').innerText = `$${room.wager.toLocaleString()}`;
+    const distLabel = document.getElementById('roomDistanceLabel');
+    if (distLabel) {
+      distLabel.innerText = `${room.distanceName || '1/4 ไมล์ (402m)'} (x${room.prizeMultiplier || 1.0})`;
+    }
+    const winPot = Math.round(room.wager * 2 * (room.prizeMultiplier || 1.0));
+    document.getElementById('roomWagerVal').innerText = `$${winPot.toLocaleString()} (เดิมพันคนละ $${room.wager.toLocaleString()})`;
 
     const p1 = room.players[0];
     const p2 = room.players[1];
@@ -526,7 +559,12 @@ class MultiplayerManager {
       this.game.updateMoneyDisplay();
     }
 
-    const targetDist = this.game.raceManager.selectedDistance?.meters || 402.336;
+    const distObj = (typeof RACE_DISTANCES !== 'undefined')
+      ? (RACE_DISTANCES.find(d => d.id === room.distanceId) || RACE_DISTANCES[0])
+      : { id: '0.25', name: '1/4 ไมล์ (402m)', miles: 0.25, meters: 402.336, prizeMultiplier: 1.0, label: '1/4 MILE' };
+
+    this.game.raceManager.selectedDistance = distObj;
+    const targetDist = room.distanceMeters || distObj.meters;
     this.game.raceManager.playerCar = new CarPhysics(this.game.playerCar, false, null, targetDist);
 
     let oppCarData = oppPlayer?.carData
