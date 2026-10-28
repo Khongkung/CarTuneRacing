@@ -419,11 +419,61 @@ function handleClientMessage(socket, data) {
       break;
     }
 
+    case 'FALSE_START': {
+      if (!client.roomId) return;
+      const room = rooms.get(client.roomId);
+      if (!room) return;
+
+      client.falseStart = true;
+      const winnerPlayer = room.players.find(p => p.id !== client.id);
+
+      // Register foul in results if not already present
+      if (!room.results.some(r => r.id === client.id)) {
+        room.results.push({
+          id: client.id,
+          name: client.name,
+          time: 99.99,
+          trapSpeed: 0,
+          falseStart: true,
+          blown: false
+        });
+      }
+
+      // Notify both clients immediately of the false start & immediate winner!
+      for (const p of room.players) {
+        sendWSFrame(p.socket, {
+          type: 'PLAYER_FALSE_START',
+          fouledPlayerId: client.id,
+          fouledPlayerName: client.name,
+          winnerId: winnerPlayer ? winnerPlayer.id : null,
+          winnerName: winnerPlayer ? winnerPlayer.name : ''
+        });
+      }
+
+      finalizeRace(room, client.id);
+      break;
+    }
+
     case 'RACE_SYNC': {
       // Telemetry relay between racers
       if (!client.roomId) return;
       const room = rooms.get(client.roomId);
       if (!room) return;
+
+      if (data.falseStart && !client.falseStart) {
+        client.falseStart = true;
+        const winnerPlayer = room.players.find(p => p.id !== client.id);
+        for (const p of room.players) {
+          sendWSFrame(p.socket, {
+            type: 'PLAYER_FALSE_START',
+            fouledPlayerId: client.id,
+            fouledPlayerName: client.name,
+            winnerId: winnerPlayer ? winnerPlayer.id : null,
+            winnerName: winnerPlayer ? winnerPlayer.name : ''
+          });
+        }
+        finalizeRace(room, client.id);
+      }
 
       // Broadcast telemetry to opponent
       for (const p of room.players) {
@@ -453,17 +503,25 @@ function handleClientMessage(socket, data) {
     case 'RACE_FINISH': {
       if (!client.roomId) return;
       const room = rooms.get(client.roomId);
-      if (!room || room.status !== 'racing') return;
+      if (!room || (room.status !== 'racing' && room.status !== 'countdown')) return;
 
       // Register finish time
-      room.results.push({
-        id: client.id,
-        name: client.name,
-        time: parseFloat(data.time) || 99.99,
-        trapSpeed: parseFloat(data.trapSpeed) || 0,
-        falseStart: !!data.falseStart,
-        blown: !!data.blown
-      });
+      if (!room.results.some(r => r.id === client.id)) {
+        room.results.push({
+          id: client.id,
+          name: client.name,
+          time: parseFloat(data.time) || 99.99,
+          trapSpeed: parseFloat(data.trapSpeed) || 0,
+          falseStart: !!data.falseStart,
+          blown: !!data.blown
+        });
+      }
+
+      // If someone false started, immediately finalize race!
+      if (data.falseStart) {
+        finalizeRace(room, client.id);
+        return;
+      }
 
       if (room.results.length >= room.players.length) {
         finalizeRace(room);
@@ -530,18 +588,24 @@ function startRaceSequence(room) {
   }, 2500);
 }
 
-function finalizeRace(room) {
+function finalizeRace(room, earlyFoulLoserId = null) {
+  if (room.status === 'finished') return;
   room.status = 'finished';
 
   // Determine winner
-  const validRacers = room.results.filter(r => !r.falseStart);
-  validRacers.sort((a, b) => a.time - b.time);
-
   let winnerId = null;
-  if (validRacers.length > 0) {
-    winnerId = validRacers[0].id;
-  } else if (room.results.length > 0) {
-    winnerId = room.results[0].id; // Fallback if both false started
+  if (earlyFoulLoserId) {
+    const winnerPlayer = room.players.find(p => p.id !== earlyFoulLoserId);
+    winnerId = winnerPlayer ? winnerPlayer.id : null;
+  } else {
+    const validRacers = room.results.filter(r => !r.falseStart);
+    validRacers.sort((a, b) => a.time - b.time);
+
+    if (validRacers.length > 0) {
+      winnerId = validRacers[0].id;
+    } else if (room.results.length > 0) {
+      winnerId = room.results[0].id; // Fallback if both false started
+    }
   }
 
   const pot = room.wager * 2;
@@ -551,7 +615,8 @@ function finalizeRace(room) {
       type: 'RACE_OVER',
       results: room.results,
       winnerId: winnerId,
-      pot: pot
+      pot: pot,
+      reason: earlyFoulLoserId ? 'FOUL_WIN' : 'NORMAL'
     });
     p.ready = false;
   }

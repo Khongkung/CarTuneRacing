@@ -20,6 +20,8 @@ class RaceManager {
     this.isGreen = false;
     this.greenTimestamp = 0;
     this.falseStart = false;
+    this.opponentFalseStart = false;
+    this.opponentFalseStartName = '';
 
     // Racers
     this.playerCar = null;
@@ -191,6 +193,17 @@ class RaceManager {
         alertBox.innerText = '🚨 ฟาวล์! ออกตัวก่อนไฟเขียว (RED LIGHT / FALSE START)!';
       }
 
+      if (this.game.multiplayer) {
+        this.game.multiplayer.send({
+          type: 'FALSE_START',
+          falseStart: true
+        });
+        if (this.playerCar) {
+          this.game.multiplayer.sendRaceSync(this.playerCar);
+          this.game.multiplayer.sendRaceFinish(this.playerCar);
+        }
+      }
+
       // Automatically conclude the race after 1.8s so player is NOT stuck!
       setTimeout(() => {
         if (this.isActive) {
@@ -198,6 +211,48 @@ class RaceManager {
         }
       }, 1800);
     }
+  }
+
+  // --- OPPONENT FALSE START (IMMEDIATE VICTORY FOR PLAYER) ---
+  triggerOpponentFalseStart(oppName = 'คู่แข่ง') {
+    if (!this.isActive || this.falseStart || this.opponentFalseStart) return;
+    this.opponentFalseStart = true;
+    this.opponentFalseStartName = oppName;
+    this.treeState = 'RED';
+
+    if (this.opponentCar) {
+      this.opponentCar.falseStart = true;
+    }
+
+    const alertBox = document.getElementById('raceBlownBanner');
+    if (alertBox) {
+      alertBox.style.display = 'block';
+      alertBox.style.background = '#059669';
+      alertBox.style.color = '#ffffff';
+      alertBox.innerText = `🏆 ${oppName} ออกตัวฟาวล์ก่อนไฟเขียว (RED LIGHT)! คุณชนะการแข่งขันทันที!`;
+    }
+
+    audio.playSuccess();
+
+    if (this.finishTimer) {
+      clearTimeout(this.finishTimer);
+      this.finishTimer = null;
+    }
+
+    // Automatically conclude race with immediate victory popup after 1.2s
+    this.finishTimer = setTimeout(() => {
+      if (this.isActive) {
+        this.concludeRace();
+      }
+    }, 1200);
+  }
+
+  concludeMultiplayerRace(isWinner, pot, reason) {
+    if (!this.isActive) return;
+    if (reason === 'FOUL_WIN' && isWinner) {
+      this.opponentFalseStart = true;
+    }
+    this.concludeRace();
   }
 
   // --- START TIME TRIAL / MONEY FARMING RACE (FREE ENTRY) ---
@@ -370,6 +425,8 @@ class RaceManager {
   launchRaceScene() {
     this.isActive = true;
     this.falseStart = false;
+    this.opponentFalseStart = false;
+    this.opponentFalseStartName = '';
     this.isGreen = false;
     this.cameraX = 0;
     this.treeState = 'PRE_STAGE';
@@ -1024,13 +1081,14 @@ class RaceManager {
           isPlayer: false,
           name: o.botConfig?.name || `คู่แข่ง #${i + 1}`,
           car: o,
-          config: o.botConfig
+          config: o.botConfig,
+          falseStart: Boolean(o.falseStart || (this.opponentFalseStart && i === 0))
         });
       }
 
       standings.sort((a, b) => {
-        const aFoul = a.isPlayer && this.falseStart;
-        const bFoul = b.isPlayer && this.falseStart;
+        const aFoul = a.isPlayer ? this.falseStart : Boolean(a.falseStart);
+        const bFoul = b.isPlayer ? this.falseStart : Boolean(b.falseStart);
         if (aFoul !== bFoul) return aFoul ? 1 : -1;
 
         const aBlown = a.car.isBlown && a.car.blownBeforeFinish;
@@ -1048,6 +1106,12 @@ class RaceManager {
       if (this.falseStart) {
         isPlayerWinner = false;
         winReason = 'คุณฟาวล์ออกตัวก่อนไฟเขียว (RED LIGHT FOUL)!';
+      } else if (this.opponentFalseStart || (opp && opp.falseStart)) {
+        isPlayerWinner = true;
+        prizeMoney = totalPot;
+        const oppName = this.opponentFalseStartName || opp?.botConfig?.name || 'คู่แข่ง';
+        winReason = `คู่แข่ง (${oppName}) ออกตัวฟาวล์ก่อนไฟเขียว (RED LIGHT FOUL)! คุณชนะการแข่งขันทันที!`;
+        this.game.money += prizeMoney;
       } else if (p.isBlown && p.blownBeforeFinish) {
         isPlayerWinner = false;
         winReason = `เครื่องยนต์ระเบิดพังก่อนเข้าเส้นชัย (DNF: ${p.blownReason})!`;
@@ -1150,29 +1214,39 @@ class RaceManager {
       if (multiContainer) multiContainer.style.display = 'none';
 
       // Player stats
+      const pFouled = this.falseStart;
       document.getElementById('slipPlayerName').innerText = this.game.playerName || 'YOU';
-      document.getElementById('slipPlayer60ft').innerText = p.time60ft > 0 ? (p.time60ft.toFixed(3) + 's') : '-';
-      document.getElementById('slipPlayer330ft').innerText = p.time330ft > 0 ? (p.time330ft.toFixed(3) + 's') : '-';
-      document.getElementById('slipPlayer660ft').innerText = p.time660ft > 0 ? (p.time660ft.toFixed(3) + 's') : '-';
-      document.getElementById('slipPlayerET').innerText = (p.isBlown && p.blownBeforeFinish)
-        ? `DNF (${Math.round(p.distance)}m)`
-        : (p.timeQuarterMile > 0 ? (p.timeQuarterMile.toFixed(3) + 's') : '-');
-      document.getElementById('slipPlayerTrap').innerText = (p.isBlown && p.blownBeforeFinish)
-        ? 'DNF'
-        : (p.finishTrapSpeed > 0 ? (p.finishTrapSpeed + ' km/h') : '-');
+      document.getElementById('slipPlayer60ft').innerText = pFouled ? 'FOUL' : (p.time60ft > 0 ? (p.time60ft.toFixed(3) + 's') : '-');
+      document.getElementById('slipPlayer330ft').innerText = pFouled ? 'FOUL' : (p.time330ft > 0 ? (p.time330ft.toFixed(3) + 's') : '-');
+      document.getElementById('slipPlayer660ft').innerText = pFouled ? 'FOUL' : (p.time660ft > 0 ? (p.time660ft.toFixed(3) + 's') : '-');
+      document.getElementById('slipPlayerET').innerText = pFouled
+        ? 'FOUL (ออกตัวฟาวล์)'
+        : ((p.isBlown && p.blownBeforeFinish)
+          ? `DNF (${Math.round(p.distance)}m)`
+          : (p.timeQuarterMile > 0 ? (p.timeQuarterMile.toFixed(3) + 's') : '-'));
+      document.getElementById('slipPlayerTrap').innerText = pFouled
+        ? 'FOUL'
+        : ((p.isBlown && p.blownBeforeFinish)
+          ? 'DNF'
+          : (p.finishTrapSpeed > 0 ? (p.finishTrapSpeed + ' km/h') : '-'));
 
       // Opponent stats
       if (opp) {
+        const oppFouled = Boolean(opp.falseStart || this.opponentFalseStart);
         document.getElementById('slipOppName').innerText = this.botConfig?.name || 'OPPONENT';
-        document.getElementById('slipOpp60ft').innerText = opp.time60ft > 0 ? (opp.time60ft.toFixed(3) + 's') : '-';
-        document.getElementById('slipOpp330ft').innerText = opp.time330ft > 0 ? (opp.time330ft.toFixed(3) + 's') : '-';
-        document.getElementById('slipOpp660ft').innerText = opp.time660ft > 0 ? (opp.time660ft.toFixed(3) + 's') : '-';
-        document.getElementById('slipOppET').innerText = (opp.isBlown && opp.blownBeforeFinish)
-          ? `DNF (${Math.round(opp.distance)}m)`
-          : (opp.timeQuarterMile > 0 ? (opp.timeQuarterMile.toFixed(3) + 's') : '-');
-        document.getElementById('slipOppTrap').innerText = (opp.isBlown && opp.blownBeforeFinish)
-          ? 'DNF'
-          : (opp.finishTrapSpeed > 0 ? (opp.finishTrapSpeed + ' km/h') : '-');
+        document.getElementById('slipOpp60ft').innerText = oppFouled ? 'FOUL' : (opp.time60ft > 0 ? (opp.time60ft.toFixed(3) + 's') : '-');
+        document.getElementById('slipOpp330ft').innerText = oppFouled ? 'FOUL' : (opp.time330ft > 0 ? (opp.time330ft.toFixed(3) + 's') : '-');
+        document.getElementById('slipOpp660ft').innerText = oppFouled ? 'FOUL' : (opp.time660ft > 0 ? (opp.time660ft.toFixed(3) + 's') : '-');
+        document.getElementById('slipOppET').innerText = oppFouled
+          ? 'FOUL (ออกตัวฟาวล์)'
+          : ((opp.isBlown && opp.blownBeforeFinish)
+            ? `DNF (${Math.round(opp.distance)}m)`
+            : (opp.timeQuarterMile > 0 ? (opp.timeQuarterMile.toFixed(3) + 's') : '-'));
+        document.getElementById('slipOppTrap').innerText = oppFouled
+          ? 'FOUL'
+          : ((opp.isBlown && opp.blownBeforeFinish)
+            ? 'DNF'
+            : (opp.finishTrapSpeed > 0 ? (opp.finishTrapSpeed + ' km/h') : '-'));
       }
     }
 

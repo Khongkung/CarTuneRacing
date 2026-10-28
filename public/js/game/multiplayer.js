@@ -330,6 +330,15 @@ class MultiplayerManager {
         break;
       }
 
+      case 'PLAYER_FALSE_START': {
+        const isMeFouled = msg.fouledPlayerId === this.clientId;
+        if (!isMeFouled && this.game.raceManager.isActive) {
+          // The OTHER player fouled! I WIN immediately!
+          this.game.raceManager.triggerOpponentFalseStart(msg.fouledPlayerName || 'คู่แข่ง');
+        }
+        break;
+      }
+
       case 'OPPONENT_SYNC': {
         // Sync opponent physics & finish telemetry
         if (this.game.raceManager.opponentCar) {
@@ -340,6 +349,12 @@ class MultiplayerManager {
           opp.gear = msg.gear;
           opp.nosActive = msg.nos;
           opp.wheelie = msg.wheelie || 0;
+          if (msg.falseStart && !opp.falseStart) {
+            opp.falseStart = true;
+            if (this.game.raceManager.isActive && !this.game.raceManager.falseStart) {
+              this.game.raceManager.triggerOpponentFalseStart(opp.botConfig?.name || 'คู่แข่ง');
+            }
+          }
           if (msg.isFinished !== undefined) opp.isFinished = msg.isFinished;
           if (msg.timeQuarterMile) opp.timeQuarterMile = msg.timeQuarterMile;
           if (msg.time60ft) opp.time60ft = msg.time60ft;
@@ -354,7 +369,10 @@ class MultiplayerManager {
       }
 
       case 'RACE_OVER': {
-        // Finish results from server
+        if (this.game.raceManager.isActive) {
+          const isWinner = msg.winnerId === this.clientId;
+          this.game.raceManager.concludeMultiplayerRace(isWinner, msg.pot, msg.reason);
+        }
         break;
       }
 
