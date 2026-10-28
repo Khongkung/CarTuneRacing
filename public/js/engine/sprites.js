@@ -1600,116 +1600,99 @@ class PixelRenderer {
       const isSwappedEngine = engineId !== 'block_diesel_pickup';
 
       if (isSwappedEngine) {
-        // Soft Feathered Dark Engine Bay Recess (Preserves surrounding hoses, airbox, brake booster & radiator!)
-        const bayGrad = ctx.createRadialGradient(eX, eY + 4, 18, eX, eY + 4, 82);
-        bayGrad.addColorStop(0, '#141210');
-        bayGrad.addColorStop(0.72, 'rgba(20, 18, 16, 0.94)');
-        bayGrad.addColorStop(1, 'rgba(20, 18, 16, 0)');
-        ctx.fillStyle = bayGrad;
-        ctx.beginPath();
-        ctx.ellipse(eX, eY + 2, 78, 48, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Render Perspective-Scaled Swapped Engine Block inside the Ranger Bay
-        ctx.save();
-        ctx.translate(eX, eY + 4);
-        ctx.scale(0.54, 0.48);
-        ctx.translate(-eX, -eY);
-        this.renderFrontValveCover(ctx, eX, eY, engineId, parts, beltRot, heatFactor);
-        ctx.restore();
-
-        // Connect Swapped Engine Seamlessly to Ranger's Left Airbox & Front Radiator with Weathered Pipes & Couplers!
-        this.drawHeaderTube(ctx, [
-          [w * 0.395, h * 0.548 + vibY * 0.5],
-          [w * 0.440, h * 0.542 + vibY],
-          [eX - 24, eY - 6]
-        ], '#33302e', '#57534e', 9);
-        // Upper Radiator Coolant Hose to Swapped Engine
-        this.drawHeaderTube(ctx, [
-          [eX + 18, eY + 10],
-          [w * 0.558, h * 0.585 + vibY * 0.5],
-          [w * 0.540, radY]
-        ], '#1c1917', '#44403c', 7);
+        // Render 3D-Perspective Pixel-Art Swapped Engine strictly inside the Ranger's central longitudinal engine bay!
+        // Preserves Top-Mount Intercooler above, Turbo & Airbox on left, and Alternator & Copper Charge Pipe on right!
+        this.renderRangerFrontEngineSwap(ctx, w, h, engineId, parts, beltRot, heatFactor, vibX, vibY);
       }
 
       // =======================================================================
-      // 3. BLENDED FRONT TIMING & ACCESSORY PULLEYS + SERPENTINE BELT (LIVE!)
+      // 3. SUBTLE LIVE-SPINNING ALTERNATOR ROTOR & LOWER CRANK PULLEY (IN-PLACE!)
       // =======================================================================
-      // Positioned strictly on the actual Alternator (`w * 0.550, h * 0.562`) & lower front timing cover (`eX, h * 0.575`)
-      // so the valve cover & top-mount intercooler remain clean and uncovered!
+      // Sits strictly inside the existing slotted Alternator face (`w * 0.556, h * 0.568`) & lower crank recess (`w * 0.504, h * 0.580`)
+      // so the pixel-art valve cover & top-mount intercooler remain 100% clean and uncovered!
       const gearAnodize = cams.includes('stage3') || cams.includes('f1')
-        ? '#8c2828'
-        : (cams.includes('titanium') ? '#b8862d' : (cams.includes('stage2') ? '#284b7a' : '#57534e'));
+        ? '#7f2323'
+        : (cams.includes('titanium') ? '#a16207' : (cams.includes('stage2') ? '#234175' : '#57534e'));
 
-      const gCam   = { x: Math.round(w * 0.524 + vibX), y: Math.round(h * 0.532 + vibY), r: 6.5 };
-      const pCrank = { x: Math.round(w * 0.503 + vibX), y: Math.round(h * 0.576 + vibY), r: 8.0 };
-      const pAlt   = { x: Math.round(w * 0.550 + vibX), y: Math.round(h * 0.562 + vibY), r: 7.5 };
-      const pIdler = { x: Math.round(w * 0.480 + vibX), y: Math.round(h * 0.566 + vibY), r: 6.0 };
+      const pCrank = { x: Math.round(w * 0.504 + vibX), y: Math.round(h * 0.580 + vibY), r: 5.5 };
+      const pAlt   = { x: Math.round(w * 0.556 + vibX), y: Math.round(h * 0.568 + vibY), r: 6.2 };
 
-      const drawRangerBeltPath = () => {
-        ctx.beginPath();
-        ctx.moveTo(gCam.x - 5, gCam.y - 4);
-        ctx.lineTo(pIdler.x - 5, pIdler.y);
-        ctx.lineTo(pCrank.x - 4, pCrank.y + 6);
-        ctx.lineTo(pAlt.x + 6, pAlt.y + 3);
-        ctx.lineTo(gCam.x + 5, gCam.y - 3);
-        ctx.closePath();
-      };
-
-      // Weathered Dark Rubber Drive Belt
       ctx.save();
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = 0.76;
+      // Subtle lower V-belt between Crank & Alternator only
       ctx.strokeStyle = '#141210';
-      ctx.lineWidth = 3.6;
-      drawRangerBeltPath();
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(pCrank.x, pCrank.y - 4);
+      ctx.lineTo(pAlt.x, pAlt.y - 5);
+      ctx.moveTo(pCrank.x, pCrank.y + 4);
+      ctx.lineTo(pAlt.x, pAlt.y + 5);
       ctx.stroke();
 
-      if (ctx.setLineDash) {
+      if (effectiveRunning && ctx.setLineDash) {
         ctx.strokeStyle = '#57534e';
-        ctx.lineWidth = 1.8;
-        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([2.5, 2.5]);
         if (typeof ctx.lineDashOffset !== 'undefined') {
-          ctx.lineDashOffset = -beltRot * 10;
+          ctx.lineDashOffset = -beltRot * 8;
         }
-        drawRangerBeltPath();
+        ctx.beginPath();
+        ctx.moveTo(pCrank.x, pCrank.y - 4);
+        ctx.lineTo(pAlt.x, pAlt.y - 5);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
-      // Draw Blended Pulleys & Cam Timing Gear
-      this.drawToothedCamGear(ctx, gCam.x, gCam.y, gCam.r, gearAnodize, '#a8a29e', beltRot * 0.65, 12);
-      this.drawSpokedPulley(ctx, pCrank.x, pCrank.y, pCrank.r, '#292524', '#78716c', beltRot, 5);
-      this.drawSpokedPulley(ctx, pAlt.x, pAlt.y, pAlt.r, '#44403c', '#a8a29e', -beltRot * 1.45, 5);
-      this.drawSpokedPulley(ctx, pIdler.x, pIdler.y, pIdler.r, '#292524', '#57534e', beltRot * 1.25, 4);
+      this.drawSpokedPulley(ctx, pCrank.x, pCrank.y, pCrank.r, '#1c1917', '#78716c', beltRot, 5);
+      this.drawSpokedPulley(ctx, pAlt.x, pAlt.y, pAlt.r, '#292524', '#a8a29e', -beltRot * 1.45, 6);
+
+      // Only show upgraded vernier cam gear inside front timing window when camshafts are upgraded on stock diesel
+      if (!isSwappedEngine && cams !== 'head_stock') {
+        this.drawToothedCamGear(ctx, Math.round(w * 0.504 + vibX), Math.round(h * 0.525 + vibY), 5.2, gearAnodize, '#a8a29e', beltRot * 0.65, 10);
+      }
       ctx.restore();
 
       // =======================================================================
-      // 4. BLENDED FORCED INDUCTION (TURBO / TWIN TURBO / SUPERCHARGER) & TOP-MOUNT INTERCOOLER
+      // 4. RECESSED IN-PLACE TURBO IMPELLER & TOP-MOUNT INTERCOOLER GLAZE
       // =======================================================================
       const isTwinOrQuad = ind.includes('twin') || ind.includes('promod') || ind.includes('quad');
       const isBigSingle = ind.includes('massive') || ind.includes('large');
       const impAngle = effectiveRunning ? (performance.now() * 0.055 * (rpm / 1000 + Math.max(0, boost) * 3.5)) : 0;
 
       if (ind.includes('turbo')) {
-        const tRadius = isBigSingle ? 12 : 9.5;
-        // Left-side Turbocharger recessed into the existing turbo location (`w * 0.448, h * 0.538`)
-        this.drawBlendedTurbo(ctx, w * 0.448 + vibX, h * 0.538 + vibY, tRadius, impAngle, heatFactor, '#78716c');
+        // Recessed inside the existing pixel-art turbo compressor snail (`w * 0.448, h * 0.530`) without covering the snail housing!
+        const tX = Math.round(w * 0.448 + vibX);
+        const tY = Math.round(h * 0.530 + vibY);
+        const throatR = isBigSingle ? 6.2 : 4.8;
 
-        // Silicone Hose Coupler joining Turbo to Airbox Pipe (`#234175` Muted Blue)
-        ctx.fillStyle = '#234175';
-        ctx.strokeStyle = '#1c1614';
-        ctx.lineWidth = 1.4;
-        ctx.fillRect(w * 0.422 + vibX, h * 0.538 + vibY, 8, 9);
-        ctx.strokeRect(w * 0.422 + vibX, h * 0.538 + vibY, 8, 9);
+        ctx.save();
+        ctx.globalAlpha = 0.80;
+        if (heatFactor > 0.15) {
+          ctx.fillStyle = `rgba(217, 119, 6, ${0.18 + heatFactor * 0.35})`;
+          ctx.beginPath();
+          ctx.arc(tX, tY, throatR + 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#141210';
+        ctx.beginPath();
+        ctx.arc(tX, tY, throatR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.translate(tX, tY);
+        ctx.rotate(impAngle);
+        ctx.strokeStyle = '#a8a29e';
+        ctx.lineWidth = 1.2;
+        for (let b = 0; b < 6; b++) {
+          const a = (b * Math.PI) / 3;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a) * (throatR - 0.8), Math.sin(a) * (throatR - 0.8));
+          ctx.stroke();
+        }
+        ctx.restore();
 
         if (isTwinOrQuad) {
-          // Compound / Twin-Turbo Secondary Snail tucked on Right Exhaust Side (`w * 0.572, h * 0.522`)
-          this.drawHeaderTube(ctx, [
-            [w * 0.572 + vibX, h * 0.522 + vibY],
-            [w * 0.562 + vibX, h * 0.470 + vibY],
-            [w * 0.545 + vibX, h * 0.460 + vibY]
-          ], '#57534e', '#a8a29e', 7);
-          this.drawBlendedTurbo(ctx, w * 0.572 + vibX, h * 0.522 + vibY, tRadius * 0.92, -impAngle * 1.05, heatFactor, '#78716c');
+          // Secondary compound turbo tucked in the lower-left shadow cavity (`w * 0.442, h * 0.562`)
+          this.drawBlendedTurbo(ctx, w * 0.442 + vibX, h * 0.562 + vibY, 6.5, -impAngle * 1.05, heatFactor, '#57534e');
         }
       } else if (ind.includes('supercharger')) {
         // Blended Cast-Aluminum Roots Supercharger Housing mounted in Top-Mount position
@@ -1900,17 +1883,165 @@ class PixelRenderer {
     ctx.restore();
   }
 
-  // --- CUSTOM PIXEL-ART ENGINE SWAP RENDERER FOR PORSCHE 911 TURBO S REAR BAY ---
+  // --- CUSTOM 3D-PERSPECTIVE PIXEL-ART ENGINE SWAP FOR FORD RANGER (2004) FRONT BAY ---
+  renderRangerFrontEngineSwap(ctx, w, h, engineId, parts, beltRot, heatFactor, vibX, vibY) {
+    const cams = parts.head_cams || 'head_stock';
+    const ign = parts.ignition || 'ignition_oem';
+
+    // Exact bounds of the central longitudinal engine block cavity in ranger_engine.jpg
+    // Sitting strictly below the Top-Mount Intercooler (y: 0.488..0.588 * h) and between Left Turbo (0.472 * w) & Right Alternator (0.536 * w)
+    const cX = Math.round(w * 0.505 + vibX);
+    const topY = Math.round(h * 0.489 + vibY);
+    const botY = Math.round(h * 0.586 + vibY);
+    const bH = botY - topY;
+    const topHalfW = Math.round(w * 0.025); // Perspective narrower near firewall/intercooler
+    const botHalfW = Math.round(w * 0.031); // Perspective wider near front radiator
+
+    const gearAnodize = cams.includes('stage3') || cams.includes('f1')
+      ? '#7f2323'
+      : (cams.includes('titanium') ? '#a16207' : (cams.includes('stage2') ? '#234175' : '#57534e'));
+
+    const coilColor = ign.includes('plasma')
+      ? '#234175'
+      : (ign.includes('cdi') ? '#7f2323' : (ign.includes('f1') ? '#0e7490' : '#3f3f46'));
+
+    ctx.save();
+
+    // 1. Soft Recessed Shadow Cavity (Preserves Top-Mount Intercooler above, Turbo on left, Alternator on right!)
+    const recessGrad = ctx.createLinearGradient(cX, topY, cX, botY);
+    recessGrad.addColorStop(0, 'rgba(15, 13, 12, 0.92)');
+    recessGrad.addColorStop(0.5, 'rgba(24, 21, 19, 0.95)');
+    recessGrad.addColorStop(1, 'rgba(15, 13, 12, 0.90)');
+    ctx.fillStyle = recessGrad;
+    ctx.beginPath();
+    ctx.moveTo(cX - topHalfW - 2, topY);
+    ctx.lineTo(cX + topHalfW + 2, topY);
+    ctx.lineTo(cX + botHalfW + 3, botY);
+    ctx.lineTo(cX - botHalfW - 3, botY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Helper for 3D perspective trapezoidal valve cover / block bank
+    const drawPerspectiveBank = (topL, topR, botL, botR, y1, y2, baseCol, hiCol, edgeCol = '#1c1614') => {
+      const grad = ctx.createLinearGradient(topL, y1, botR, y2);
+      grad.addColorStop(0, hiCol);
+      grad.addColorStop(0.45, baseCol);
+      grad.addColorStop(1, '#1c1917');
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = edgeCol;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(topL, y1);
+      ctx.lineTo(topR, y1);
+      ctx.lineTo(botR, y2);
+      ctx.lineTo(botL, y2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Top pixel-art specular highlight rim
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(topL + 1.5, y1 + 1.5);
+      ctx.lineTo(topR - 1.5, y1 + 1.5);
+      ctx.stroke();
+    };
+
+    if (engineId === 'block_i6_2jz' || engineId === 'block_i4_vtec') {
+      // Longitudinal DOHC Inline-6 (2JZ-GTE) or Inline-4 (VTEC) tucked under Ranger Top-Mount Intercooler
+      const is2JZ = engineId === 'block_i6_2jz';
+      const coverBase = is2JZ ? '#273549' : '#7f2323';
+      const coverHi = is2JZ ? '#475569' : '#991b1b';
+      const cylCount = is2JZ ? 6 : 4;
+
+      // Left & Right Perspective Twin-Cam Towers
+      drawPerspectiveBank(cX - topHalfW, cX - 4, cX - botHalfW, cX - 5, topY + 2, botY - 10, coverBase, coverHi);
+      drawPerspectiveBank(cX + 4, cX + topHalfW, cX + 5, cX + botHalfW, topY + 2, botY - 10, coverBase, coverHi);
+
+      // Center Recessed Spark Plug Valley & Individual Ignition Coils
+      ctx.fillStyle = '#141210';
+      ctx.fillRect(cX - 4, topY + 3, 8, bH - 14);
+      ctx.fillStyle = coilColor;
+      const stepY = (bH - 18) / cylCount;
+      for (let i = 0; i < cylCount; i++) {
+        ctx.fillRect(cX - 3, Math.round(topY + 5 + i * stepY), 6, 2.5);
+      }
+
+      // Cast-Aluminum Lower Timing Chest & Exposed Twin Vernier Cam Gears at Front
+      drawPerspectiveBank(cX - botHalfW + 2, cX + botHalfW - 2, cX - botHalfW + 3, cX + botHalfW - 3, botY - 11, botY - 1, '#292524', '#44403c');
+      this.drawToothedCamGear(ctx, cX - 8, botY - 11, 5.2, gearAnodize, '#a8a29e', beltRot * 0.7, 10);
+      this.drawToothedCamGear(ctx, cX + 8, botY - 11, 5.2, gearAnodize, '#a8a29e', -beltRot * 0.7, 10);
+    } else if (engineId === 'block_v8_big' || engineId === 'block_nascar_v8') {
+      // V8 Big-Block / NASCAR V8: Angled Left & Right Cylinder Heads + Center Finned Intake Valley
+      const isNascar = engineId === 'block_nascar_v8';
+      const bankBase = isNascar ? '#7c2d12' : '#44403c';
+      const bankHi = isNascar ? '#9a3412' : '#78716c';
+
+      // Left & Right Angled V8 Valve Covers
+      drawPerspectiveBank(cX - topHalfW - 2, cX - 8, cX - botHalfW - 2, cX - 10, topY + 3, botY - 6, bankBase, bankHi);
+      drawPerspectiveBank(cX + 8, cX + topHalfW + 2, cX + 10, cX + botHalfW + 2, topY + 3, botY - 6, bankBase, bankHi);
+
+      // Center Cross-Ram Intake Plenum
+      drawPerspectiveBank(cX - 8, cX + 8, cX - 10, cX + 10, topY + 2, botY - 6, '#292524', '#57534e');
+
+      // 4 Intake Runners & Coils per Bank
+      ctx.fillStyle = '#78716c';
+      for (let i = 0; i < 4; i++) {
+        const ry = Math.round(topY + 6 + i * ((bH - 16) / 4));
+        ctx.fillRect(cX - 9, ry, 18, 2);
+        ctx.fillStyle = coilColor;
+        ctx.fillRect(cX - botHalfW + 2, ry, 5, 2.5);
+        ctx.fillRect(cX + botHalfW - 7, ry, 5, 2.5);
+        ctx.fillStyle = '#78716c';
+      }
+      this.drawSpokedPulley(ctx, cX, botY - 6, 5.8, '#1c1917', '#a8a29e', beltRot, 5);
+    } else if (engineId === 'block_v10_gt3' || engineId === 'block_v12_quad_turbo') {
+      // V10 GT3 / V12 Hypercar: Carbon-Kevlar V-Banks + Brass Individual Velocity Stacks
+      const pairs = engineId === 'block_v12_quad_turbo' ? 6 : 5;
+      drawPerspectiveBank(cX - topHalfW - 1, cX - 7, cX - botHalfW - 1, cX - 9, topY + 2, botY - 7, '#27272a', '#52525b');
+      drawPerspectiveBank(cX + 7, cX + topHalfW + 1, cX + 9, cX + botHalfW + 1, topY + 2, botY - 7, '#27272a', '#52525b');
+      drawPerspectiveBank(cX - 7, cX + 7, cX - 9, cX + 9, topY + 3, botY - 7, '#18181b', '#292524');
+
+      const stepY = (bH - 14) / pairs;
+      for (let i = 0; i < pairs; i++) {
+        const sy = Math.round(topY + 5 + i * stepY);
+        ctx.fillStyle = '#a16207';
+        ctx.fillRect(cX - 7, sy, 4, 2.5);
+        ctx.fillRect(cX + 3, sy, 4, 2.5);
+        ctx.fillStyle = '#71717a';
+        ctx.fillRect(cX - botHalfW + 3, sy, 8, 2);
+        ctx.fillRect(cX + botHalfW - 11, sy, 8, 2);
+      }
+      this.drawToothedCamGear(ctx, cX - 8, botY - 7, 4.8, gearAnodize, '#d4d4d8', beltRot * 0.8, 10);
+      this.drawToothedCamGear(ctx, cX + 8, botY - 7, 4.8, gearAnodize, '#d4d4d8', -beltRot * 0.8, 10);
+    } else {
+      // V6 Twin-Turbo (block_v6_tt) or F1 Hybrid V6 (block_f1_hybrid_v6)
+      const isF1 = engineId === 'block_f1_hybrid_v6';
+      drawPerspectiveBank(cX - topHalfW, cX + topHalfW, cX - botHalfW, cX + botHalfW, topY + 2, botY - 8, isF1 ? '#1c1917' : '#334155', isF1 ? '#44403c' : '#64748b');
+      // 3-per-side Cast Runners
+      for (let i = 0; i < 3; i++) {
+        const ry = Math.round(topY + 7 + i * 9);
+        ctx.fillStyle = isF1 ? '#b45309' : '#94a3b8';
+        ctx.fillRect(cX - topHalfW + 3, ry, topHalfW * 2 - 6, 3);
+      }
+      this.drawToothedCamGear(ctx, cX, botY - 7, 5.5, gearAnodize, '#d4d4d8', beltRot, 12);
+    }
+
+    ctx.restore();
+  }
   renderPorscheRearEngineSwap(ctx, w, h, engineId, parts, beltRot, heatFactor, vibX, vibY) {
     const cams = parts.head_cams || 'head_stock';
     const ign = parts.ignition || 'ignition_oem';
 
-    // Exact bounds of the upper center plenum cavity in porsche_engine.jpg (above the silver strut bar, between the left & right carbon airboxes)
-    const pX = Math.round(w * 0.448 + vibX);
-    const pY = Math.round(h * 0.436 + vibY);
-    const pW = Math.round(w * 0.106);
-    const pH = Math.round(h * 0.082);
-    const cX = Math.round(pX + pW * 0.5);
+    // Exact bounds of the upper center plenum window in porsche_engine.jpg (above the `turbo S` front badge plate!)
+    // Preserves the Porsche's outer 3D molded titanium/gunmetal side bolsters AND the lower `turbo S` badge plate (y: 0.498..0.520 * h)
+    const cX = Math.round(w * 0.501 + vibX);
+    const topY = Math.round(h * 0.440 + vibY);
+    const botY = Math.round(h * 0.496 + vibY);
+    const pH = botY - topY;
+    const topHalfW = Math.round(w * 0.038); // Perspective narrower near upper fans
+    const botHalfW = Math.round(w * 0.043); // Perspective wider near lower `turbo S` badge
 
     const gearAnodize = cams.includes('stage3') || cams.includes('f1')
       ? '#7f2323'
@@ -1922,128 +2053,126 @@ class PixelRenderer {
 
     ctx.save();
 
-    // 1. Recessed Dark Engine Bay Cavity Base (Matches exact pixel-art shadow depth of porsche_engine.jpg)
-    ctx.fillStyle = '#141210';
-    ctx.strokeStyle = '#1c1917';
-    ctx.lineWidth = 1.5;
+    // 1. 3D Recessed Engine Window inside the Porsche Plenum Frame (Preserves outer bolsters & `turbo S` badge!)
+    const cavGrad = ctx.createLinearGradient(cX, topY, cX, botY);
+    cavGrad.addColorStop(0, '#0f1217');
+    cavGrad.addColorStop(0.5, '#181c24');
+    cavGrad.addColorStop(1, '#0f1217');
+    ctx.fillStyle = cavGrad;
+    ctx.strokeStyle = '#272c35';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(pX + 4, pY);
-    ctx.lineTo(pX + pW - 4, pY);
-    ctx.lineTo(pX + pW, pY + pH);
-    ctx.lineTo(pX, pY + pH);
+    ctx.moveTo(cX - topHalfW, topY);
+    ctx.lineTo(cX + topHalfW, topY);
+    ctx.lineTo(cX + botHalfW, botY);
+    ctx.lineTo(cX - botHalfW, botY);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Left & Right Silicone Intake Couplers connecting Swapped Engine to Porsche's OEM Carbon Airboxes
-    ctx.fillStyle = '#234175';
-    ctx.strokeStyle = '#141210';
-    ctx.lineWidth = 1.2;
-    ctx.fillRect(pX - 4, pY + 12, 6, 14);
-    ctx.strokeRect(pX - 4, pY + 12, 6, 14);
-    ctx.fillRect(pX + pW - 2, pY + 12, 6, 14);
-    ctx.strokeRect(pX + pW - 2, pY + 12, 6, 14);
+    // Helper for 3D perspective trapezoidal bank inside the Porsche rear engine window
+    const drawPerspectiveBank = (topL, topR, botL, botR, y1, y2, baseCol, hiCol) => {
+      const grad = ctx.createLinearGradient(topL, y1, botR, y2);
+      grad.addColorStop(0, hiCol);
+      grad.addColorStop(0.45, baseCol);
+      grad.addColorStop(1, '#14171f');
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = '#141210';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(topL, y1);
+      ctx.lineTo(topR, y1);
+      ctx.lineTo(botR, y2);
+      ctx.lineTo(botL, y2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    // 2. Engine-Specific Pixel-Art Architecture inside (pX..pX+pW, pY..pY+pH)
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(topL + 1.5, y1 + 1.2);
+      ctx.lineTo(topR - 1.5, y1 + 1.2);
+      ctx.stroke();
+    };
+
+    // 2. Engine-Specific 3D Perspective Pixel-Art Architecture
     if (engineId === 'block_i6_2jz') {
-      // 2JZ-GTE Inline-6: Longitudinal Twin-Cam Gunmetal Cover + Left Cast-Aluminum Intake Plenum
-      ctx.fillStyle = '#52525b';
-      ctx.fillRect(pX + 4, pY + 4, 22, pH - 8);
-      ctx.strokeRect(pX + 4, pY + 4, 22, pH - 8);
-      // 6 Intake Runners bridging to Twin-Cam Head
-      ctx.fillStyle = '#71717a';
+      // 2JZ-GTE Inline-6: Left Cast-Aluminum Intake Plenum + 6 Runners + Right Twin-Cam Valve Cover
+      drawPerspectiveBank(cX - topHalfW + 3, cX - 12, cX - botHalfW + 3, cX - 14, topY + 2, botY - 2, '#475569', '#64748b');
       for (let r = 0; r < 6; r++) {
-        ctx.fillRect(pX + 24, pY + 5 + r * 4.5, 10, 3);
+        const ry = Math.round(topY + 3.5 + r * ((pH - 7) / 6));
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(cX - 13, ry, 10, 2);
       }
-      // Twin-Cam Valve Cover (Right/Center)
-      ctx.fillStyle = '#27272a';
-      ctx.fillRect(pX + 32, pY + 3, 44, pH - 6);
-      ctx.strokeRect(pX + 32, pY + 3, 44, pH - 6);
-      // Center Coil Valley & 6 Coil Packs
+      drawPerspectiveBank(cX - 4, cX + topHalfW - 3, cX - 5, cX + botHalfW - 3, topY + 2, botY - 2, '#1e293b', '#334155');
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(cX + 6, topY + 3, 8, pH - 6);
       ctx.fillStyle = coilColor;
       for (let c = 0; c < 6; c++) {
-        ctx.fillRect(pX + 49, pY + 5 + c * 4.5, 10, 3);
+        ctx.fillRect(cX + 7, Math.round(topY + 4 + c * ((pH - 8) / 6)), 6, 2);
       }
-      // Exposed Dual Cam Gears at Front/Bottom of 2JZ Cover
-      this.drawToothedCamGear(ctx, pX + 43, pY + pH - 8, 5.5, gearAnodize, '#a1a1aa', beltRot * 0.7, 12);
-      this.drawToothedCamGear(ctx, pX + 63, pY + pH - 8, 5.5, gearAnodize, '#a1a1aa', -beltRot * 0.7, 12);
+      this.drawToothedCamGear(ctx, cX + 3, botY - 5, 4.2, gearAnodize, '#cbd5e1', beltRot * 0.7, 10);
+      this.drawToothedCamGear(ctx, cX + 17, botY - 5, 4.2, gearAnodize, '#cbd5e1', -beltRot * 0.7, 10);
     } else if (engineId === 'block_v8_big' || engineId === 'block_nascar_v8') {
-      // V8 Swap: Angled Left & Right Finned Cast-Aluminum Valve Covers + Center Cross-Ram Plenum
-      const vcCol = engineId === 'block_nascar_v8' ? '#7c2d12' : '#3f3f46';
-      // Left & Right V8 Cylinder Banks
-      ctx.fillStyle = vcCol;
-      ctx.fillRect(pX + 3, pY + 4, 22, pH - 8);
-      ctx.strokeRect(pX + 3, pY + 4, 22, pH - 8);
-      ctx.fillRect(pX + pW - 25, pY + 4, 22, pH - 8);
-      ctx.strokeRect(pX + pW - 25, pY + 4, 22, pH - 8);
-      // Cooling Fins & 4 Coils per Bank
-      ctx.fillStyle = coilColor;
+      // V8 Swap: Angled Left & Right Perspective Cylinder Heads + Center Cross-Ram Intake Valley
+      const isNascar = engineId === 'block_nascar_v8';
+      const vcBase = isNascar ? '#7c2d12' : '#334155';
+      const vcHi = isNascar ? '#9a3412' : '#64748b';
+      drawPerspectiveBank(cX - topHalfW + 2, cX - 13, cX - botHalfW + 2, cX - 15, topY + 2, botY - 2, vcBase, vcHi);
+      drawPerspectiveBank(cX + 13, cX + topHalfW - 2, cX + 15, cX + botHalfW - 2, topY + 2, botY - 2, vcBase, vcHi);
+      drawPerspectiveBank(cX - 12, cX + 12, cX - 14, cX + 14, topY + 2, botY - 2, '#1e293b', '#475569');
       for (let i = 0; i < 4; i++) {
-        ctx.fillRect(pX + 6, pY + 6 + i * 6.5, 16, 3);
-        ctx.fillRect(pX + pW - 22, pY + 6 + i * 6.5, 16, 3);
+        const ry = Math.round(topY + 4 + i * ((pH - 8) / 4));
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(cX - 12, ry, 24, 2);
+        ctx.fillStyle = coilColor;
+        ctx.fillRect(cX - topHalfW + 5, ry, 10, 2);
+        ctx.fillRect(cX + topHalfW - 15, ry, 10, 2);
       }
-      // Center Cast Intake Manifold
-      ctx.fillStyle = '#27272a';
-      ctx.fillRect(cX - 16, pY + 3, 32, pH - 6);
-      ctx.strokeRect(cX - 16, pY + 3, 32, pH - 6);
-      this.drawSpokedPulley(ctx, cX, pY + pH - 8, 6, '#18181b', '#a1a1aa', beltRot, 5);
+      this.drawSpokedPulley(ctx, cX, botY - 5, 4.6, '#18181b', '#cbd5e1', beltRot, 5);
     } else if (engineId === 'block_v10_gt3' || engineId === 'block_v12_quad_turbo') {
-      // V10 GT3 / V12 Quad-Turbo: Motorsport Carbon Plenum with 10 or 12 Individual Velocity Stacks
+      // V10 GT3 / V12 Quad-Turbo: Motorsport Carbon V-Banks + Brass Individual Velocity Stacks
       const pairs = engineId === 'block_v12_quad_turbo' ? 6 : 5;
-      ctx.fillStyle = '#1f2937';
-      ctx.fillRect(pX + 4, pY + 3, pW - 8, pH - 6);
-      ctx.strokeRect(pX + 4, pY + 3, pW - 8, pH - 6);
-      // Center Carbon Spine
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(cX - 12, pY + 4, 24, pH - 8);
-      ctx.strokeStyle = '#7f2323';
-      ctx.strokeRect(cX - 12, pY + 4, 24, pH - 8);
-      // Individual Brass/Titanium Velocity Stacks / Runners on Left & Right
-      const stepY = (pH - 12) / pairs;
+      drawPerspectiveBank(cX - topHalfW + 2, cX - 10, cX - botHalfW + 2, cX - 12, topY + 2, botY - 2, '#1f2937', '#374151');
+      drawPerspectiveBank(cX + 10, cX + topHalfW - 2, cX + 12, cX + botHalfW - 2, topY + 2, botY - 2, '#1f2937', '#374151');
+      drawPerspectiveBank(cX - 10, cX + 10, cX - 12, cX + 12, topY + 2, botY - 2, '#111827', '#1f2937');
+      const stepY = (pH - 7) / pairs;
       for (let i = 0; i < pairs; i++) {
-        const ry = Math.round(pY + 6 + i * stepY);
-        ctx.fillStyle = '#71717a';
-        ctx.fillRect(pX + 7, ry, 18, 3);
-        ctx.fillRect(pX + pW - 25, ry, 18, 3);
-        // Brass injector / trumpeted stack tip
+        const ry = Math.round(topY + 3.5 + i * stepY);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(cX - topHalfW + 5, ry, 14, 2);
+        ctx.fillRect(cX + topHalfW - 19, ry, 14, 2);
         ctx.fillStyle = '#a16207';
-        ctx.fillRect(cX - 15, ry, 3, 3);
-        ctx.fillRect(cX + 12, ry, 3, 3);
+        ctx.fillRect(cX - 9, ry, 3, 2);
+        ctx.fillRect(cX + 6, ry, 3, 2);
       }
-      this.drawToothedCamGear(ctx, cX - 7, pY + pH - 8, 5, gearAnodize, '#d4d4d8', beltRot * 0.8, 12);
-      this.drawToothedCamGear(ctx, cX + 7, pY + pH - 8, 5, gearAnodize, '#d4d4d8', -beltRot * 0.8, 12);
+      this.drawToothedCamGear(ctx, cX - 6, botY - 5, 4.0, gearAnodize, '#d4d4d8', beltRot * 0.8, 10);
+      this.drawToothedCamGear(ctx, cX + 6, botY - 5, 4.0, gearAnodize, '#d4d4d8', -beltRot * 0.8, 10);
     } else if (engineId === 'block_f1_hybrid_v6') {
-      // F1 1.6L E-Turbo Hybrid V6: Molded Carbon Airbox + Orange MGU-H High-Voltage Harness
-      ctx.fillStyle = '#18181b';
-      ctx.fillRect(pX + 6, pY + 3, pW - 12, pH - 6);
-      ctx.strokeRect(pX + 6, pY + 3, pW - 12, pH - 6);
-      // High-Voltage Orange Hybrid Cables
+      // F1 1.6L E-Turbo Hybrid V6: Molded Carbon Plenum + MGU-H Orange Hybrid Busbars
+      drawPerspectiveBank(cX - topHalfW + 3, cX + topHalfW - 3, cX - botHalfW + 3, cX + botHalfW - 3, topY + 2, botY - 2, '#18181b', '#27272a');
       ctx.strokeStyle = '#c2410c';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(pX + 10, pY + pH - 4);
-      ctx.lineTo(cX - 8, pY + 6);
-      ctx.moveTo(pX + pW - 10, pY + pH - 4);
-      ctx.lineTo(cX + 8, pY + 6);
+      ctx.moveTo(cX - botHalfW + 8, botY - 3);
+      ctx.lineTo(cX - 6, topY + 4);
+      ctx.moveTo(cX + botHalfW - 8, botY - 3);
+      ctx.lineTo(cX + 6, topY + 4);
       ctx.stroke();
-      this.drawToothedCamGear(ctx, cX, pY + pH * 0.5, 6.5, '#a16207', '#e4e4e7', beltRot * 1.4, 14);
+      this.drawToothedCamGear(ctx, cX, topY + pH * 0.5, 5.0, '#a16207', '#e4e4e7', beltRot * 1.4, 12);
     } else {
       // V6 Twin-Turbo (block_v6_tt) or Commonrail Diesel (block_diesel_pickup): Dual-Bank Cast Collector
       const isDiesel = engineId === 'block_diesel_pickup';
-      ctx.fillStyle = isDiesel ? '#292524' : '#334155';
-      ctx.fillRect(pX + 5, pY + 3, pW - 10, pH - 6);
-      ctx.strokeRect(pX + 5, pY + 3, pW - 10, pH - 6);
-      // Dual Intake Collector Banks
-      ctx.fillStyle = isDiesel ? '#44403c' : '#475569';
-      ctx.fillRect(pX + 9, pY + 6, 26, pH - 12);
-      ctx.fillRect(pX + pW - 35, pY + 6, 26, pH - 12);
-      // High-pressure bronze commonrail lines or coil packs
+      drawPerspectiveBank(cX - topHalfW + 3, cX - 3, cX - botHalfW + 3, cX - 4, topY + 2, botY - 2, isDiesel ? '#292524' : '#334155', isDiesel ? '#44403c' : '#64748b');
+      drawPerspectiveBank(cX + 3, cX + topHalfW - 3, cX + 4, cX + botHalfW - 3, topY + 2, botY - 2, isDiesel ? '#292524' : '#334155', isDiesel ? '#44403c' : '#64748b');
       ctx.fillStyle = isDiesel ? '#a16207' : coilColor;
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(pX + 12, pY + 8 + i * 6, 20, 2.5);
-        ctx.fillRect(pX + pW - 32, pY + 8 + i * 6, 20, 2.5);
+      for (let i = 0; i < 3; i++) {
+        const ry = Math.round(topY + 5 + i * 6.5);
+        ctx.fillRect(cX - topHalfW + 7, ry, 16, 2);
+        ctx.fillRect(cX + topHalfW - 23, ry, 16, 2);
       }
-      this.drawToothedCamGear(ctx, cX, pY + pH - 8, 5.5, gearAnodize, '#d4d4d8', beltRot * 0.7, 12);
+      this.drawToothedCamGear(ctx, cX, botY - 5, 4.4, gearAnodize, '#d4d4d8', beltRot * 0.7, 10);
     }
 
     ctx.restore();
@@ -2211,54 +2340,48 @@ class PixelRenderer {
         this.renderPorscheRearEngineSwap(ctx, w, h, engineId, parts, beltRot, heatFactor, vibX, vibY);
       } else {
         // =====================================================================
-        // 4. STOCK PORSCHE 911 TURBO S FLAT-6: RECESSED CENTRAL TIMING WINDOW & CAM GEARS
+        // 4. STOCK PORSCHE 911 TURBO S FLAT-6: RECESSED CENTRAL TIMING WINDOW
         // =====================================================================
-        // Fits strictly inside the dark central vertical slot (`x: 0.490..0.512 * w, y: 0.443..0.496 * h`)
+        // Fits strictly inside the dark central vertical slot (`x: 0.493..0.509 * w, y: 0.453..0.485 * h`)
         // between the two vertical `PORSCHE` strips, above the `turbo S` badge!
         const gearAnodize = cams.includes('stage3') || cams.includes('f1')
           ? '#7f2323'
-          : (cams.includes('titanium') ? '#a16207' : (cams.includes('stage2') ? '#234175' : '#52525b'));
+          : (cams.includes('titanium') ? '#a16207' : (cams.includes('stage2') ? '#234175' : '#3f3f46'));
 
-        const slotTopY = Math.round(h * 0.453 + vibY);
-        const slotBotY = Math.round(h * 0.485 + vibY);
+        const slotTopY = Math.round(h * 0.455 + vibY);
+        const slotBotY = Math.round(h * 0.483 + vibY);
 
         ctx.save();
-        ctx.globalAlpha = 0.85;
-        // Vertical Serpentine / Timing Belt inside the central plenum slot
-        ctx.strokeStyle = '#141210';
-        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.72;
+        // Vertical Serpentine / Timing Belt recessed deep inside the central plenum slot
+        ctx.strokeStyle = '#0f0e0d';
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        ctx.moveTo(eX - 4.5, slotTopY);
-        ctx.lineTo(eX - 4.5, slotBotY);
-        ctx.moveTo(eX + 4.5, slotTopY);
-        ctx.lineTo(eX + 4.5, slotBotY);
+        ctx.moveTo(eX - 3.5, slotTopY);
+        ctx.lineTo(eX - 3.5, slotBotY);
+        ctx.moveTo(eX + 3.5, slotTopY);
+        ctx.lineTo(eX + 3.5, slotBotY);
         ctx.stroke();
 
         if (ctx.setLineDash) {
-          ctx.strokeStyle = '#71717a';
-          ctx.lineWidth = 1.6;
-          ctx.setLineDash([2.5, 2.5]);
+          ctx.strokeStyle = '#52525b';
+          ctx.lineWidth = 1.3;
+          ctx.setLineDash([2, 2.5]);
           if (typeof ctx.lineDashOffset !== 'undefined') {
             ctx.lineDashOffset = -beltRot * 8;
           }
           ctx.beginPath();
-          ctx.moveTo(eX - 4.5, slotTopY);
-          ctx.lineTo(eX - 4.5, slotBotY);
-          ctx.moveTo(eX + 4.5, slotTopY);
-          ctx.lineTo(eX + 4.5, slotBotY);
+          ctx.moveTo(eX - 3.5, slotTopY);
+          ctx.lineTo(eX - 3.5, slotBotY);
+          ctx.moveTo(eX + 3.5, slotTopY);
+          ctx.lineTo(eX + 3.5, slotBotY);
           ctx.stroke();
           ctx.setLineDash([]);
         }
 
-        // Upper & Lower Compact Pulleys inside the Central Plenum Slot
-        this.drawToothedCamGear(ctx, eX, slotTopY, 5.2, gearAnodize, '#a1a1aa', beltRot * 0.75, 10);
-        this.drawSpokedPulley(ctx, eX, slotBotY, 5.5, '#27272a', '#a1a1aa', -beltRot, 5);
-
-        // Left & Right Bank Camshaft Timing Gears tucked into the dark seam between Plenum & Carbon Airboxes (`w * 0.448` & `w * 0.554`)
-        if (cams !== 'head_stock' || effectiveRunning) {
-          this.drawToothedCamGear(ctx, w * 0.448 + vibX, h * 0.474 + vibY, 5.2, gearAnodize, '#a1a1aa', beltRot * 0.65, 10);
-          this.drawToothedCamGear(ctx, w * 0.554 + vibX, h * 0.474 + vibY, 5.2, gearAnodize, '#a1a1aa', -beltRot * 0.65, 10);
-        }
+        // Upper & Lower Compact Pulleys recessed inside the Central Plenum Slot
+        this.drawToothedCamGear(ctx, eX, slotTopY, 4.2, gearAnodize, '#71717a', beltRot * 0.75, 8);
+        this.drawSpokedPulley(ctx, eX, slotBotY, 4.4, '#27272a', '#71717a', -beltRot, 5);
         ctx.restore();
       }
 
@@ -2270,20 +2393,44 @@ class PixelRenderer {
       const impAngle = effectiveRunning ? (performance.now() * 0.055 * (rpm / 1000 + Math.max(0, boost) * 3.5)) : 0;
 
       if (ind.includes('turbo')) {
-        // Recessed inside the Left & Right Lower Turbo/Intercooler Housings (`w * 0.410, h * 0.572` & `w * 0.592, h * 0.572`)
-        // so the center Y-pipes and blue/red couplers stay 100% uncovered!
-        const tRadius = isBigSingle ? 9.5 : (isTwinOrQuad ? 8.5 : 7.0);
+        // Subtle recessed impeller throats inside the Left & Right Lower Turbo Ducts (`w * 0.410, h * 0.573` & `w * 0.592, h * 0.573`)
+        const tRadius = isBigSingle ? 5.6 : (isTwinOrQuad ? 5.0 : 4.5);
         const leftTurboX = Math.round(w * 0.410 + vibX);
         const rightTurboX = Math.round(w * 0.592 + vibX);
-        const turboY = Math.round(h * 0.572 + vibY);
+        const turboY = Math.round(h * 0.573 + vibY);
+        const drawRecessedTurboThroat = (tx, ty, rad, rot) => {
+          ctx.save();
+          ctx.globalAlpha = 0.74;
+          ctx.fillStyle = '#09090b';
+          ctx.beginPath();
+          ctx.arc(tx, ty, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = heatFactor > 0.25 ? `rgba(234,88,12,${0.3 + heatFactor * 0.4})` : 'rgba(82,82,91,0.55)';
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
 
-        ctx.save();
-        ctx.globalAlpha = 0.84;
-        this.drawBlendedTurbo(ctx, leftTurboX, turboY, tRadius, impAngle, heatFactor, '#52525b');
+          ctx.translate(tx, ty);
+          ctx.rotate(rot);
+          ctx.strokeStyle = '#a1a1aa';
+          ctx.lineWidth = 0.95;
+          for (let b = 0; b < 6; b++) {
+            const ba = (b / 6) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(ba) * (rad - 1), Math.sin(ba) * (rad - 1));
+            ctx.stroke();
+          }
+          ctx.fillStyle = '#d4d4d8';
+          ctx.beginPath();
+          ctx.arc(0, 0, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        };
+
+        drawRecessedTurboThroat(leftTurboX, turboY, tRadius, impAngle);
         if (isTwinOrQuad || ind === 'ind_turbo_small') {
-          this.drawBlendedTurbo(ctx, rightTurboX, turboY, tRadius, -impAngle * 1.04, heatFactor, '#52525b');
+          drawRecessedTurboThroat(rightTurboX, turboY, tRadius, -impAngle * 1.04);
         }
-        ctx.restore();
       } else if (ind.includes('supercharger')) {
         // Low-Profile CNC Twin-Screw Supercharger Pulley Unit inside Upper Plenum (`y: 0.442..0.494 * h`, above `turbo S` badge)
         const scX = Math.round(w * 0.468 + vibX);
