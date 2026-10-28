@@ -311,6 +311,15 @@ class CarPhysics {
     this.targetDistance = targetDistance;
 
     this.stats = CarSystem.calculateStats(carData);
+    if (this.isBot && this.botConfig?.stats) {
+      const bStats = this.botConfig.stats;
+      if (typeof bStats.hp === 'number') this.stats.hp = bStats.hp;
+      if (typeof bStats.weight === 'number') this.stats.weight = bStats.weight;
+      if (typeof bStats.grip === 'number') this.stats.grip = bStats.grip;
+      if (typeof bStats.topSpeed === 'number') this.stats.topSpeed = bStats.topSpeed;
+      this.stats.pistonMaxHp = Math.max(this.stats.pistonMaxHp || 500, Math.round(this.stats.hp * 1.6));
+      this.stats.fuelMaxHp = Math.max(this.stats.fuelMaxHp || 500, Math.round(this.stats.hp * 1.6));
+    }
     this.validation = CarSystem.validateEngine(carData);
 
     // Position & Movement
@@ -600,6 +609,12 @@ class CarPhysics {
     if (this.isFinished) {
       this.throttle = 0;
       this.botEngineLiftReason = '';
+      return;
+    }
+
+    const reactionDelay = this.botConfig?.stats?.reactionTime || 0;
+    if (this.raceTimer < reactionDelay) {
+      this.throttle = 0;
       return;
     }
 

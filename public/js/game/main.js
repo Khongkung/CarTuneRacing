@@ -492,6 +492,10 @@ class Game {
   }
 
   // --- BOT OPPONENTS LIST ---
+  renderBotsList() {
+    this.renderBotList();
+  }
+
   renderBotList() {
     const container = document.getElementById('botsListContainer');
     if (!container) return;

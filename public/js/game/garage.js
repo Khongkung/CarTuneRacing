@@ -207,7 +207,11 @@ class GarageUI {
         ensureActiveCarSynced();
         const modal = document.getElementById('botsModal');
         if (modal) {
-          this.game.renderBotsList();
+          if (typeof this.game.renderBotList === 'function') {
+            this.game.renderBotList();
+          } else if (typeof this.game.renderBotsList === 'function') {
+            this.game.renderBotsList();
+          }
           modal.style.display = 'flex';
           audio.playClick();
         }

@@ -231,7 +231,7 @@ class RaceManager {
 
     // Pace Car in upper lane
     const paceCarData = JSON.parse(JSON.stringify(DEFAULT_CAR));
-    paceCarData.parts.body = 'body_hatchback';
+    paceCarData.parts.body = 'body_porsche_911_turbo_s';
     paceCarData.parts.engine_block = 'block_i4_vtec';
     this.opponentCar = new CarPhysics(paceCarData, true, this.botConfig, targetDist);
     this.opponentCars = [this.opponentCar];
@@ -1182,7 +1182,7 @@ class RaceManager {
       if (this.mode === 'timetrial') {
         this.startTimeTrialRace(this.selectedDistance);
       } else if (this.mode === 'bot') {
-        const botIdx = BOT_ROSTER.findIndex(b => b.id === this.botConfig.id);
+        const botIdx = BOT_ROSTER.findIndex(b => b.id === this.botConfig?.id);
         this.startBotRace(botIdx >= 0 ? botIdx : 0, this.selectedDistance, this.numOpponents || 1);
       }
     };
